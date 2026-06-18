@@ -134,6 +134,19 @@ and so on.
 
 Every feature must be implemented incrementally.
 
+# Github branching, commit and push rules
+
+* Use git for version control.
+* suggest me and help me through giving me steps to create a new branch for each feature.
+* suggest proper branch names.
+* suggest proper prefix for feature branches.
+* suggest proper prefix for hotfix branches.
+* suggest proper prefix for chore branches.
+* Always suggest me to commit and push after each feature.
+* always suggest me to commit and push after each module and even after each phase into that feature branch.
+* suggest proper commit messages.
+
+
 ---
 
 # BEFORE WRITING CODE

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -54,7 +55,7 @@ class RoleSelectionPage extends StatelessWidget {
                       title: 'Citizen / Patient',
                       subtitle: 'Access your health records, book appointments, and manage your healthcare journey',
                       gradient: [AppColors.primary, const Color(0xFF1976D2)],
-                      onTap: () => Navigator.pushNamed(context, '/login', arguments: 'patient'),
+                      onTap: () => context.push('/login?role=patient'),
                     ),
                     const SizedBox(height: 16),
                     _buildRoleCard(
@@ -63,7 +64,7 @@ class RoleSelectionPage extends StatelessWidget {
                       title: 'Doctor',
                       subtitle: 'Manage patients, create treatments, and access clinical tools',
                       gradient: [AppColors.secondary, const Color(0xFF0EA5E9)],
-                      onTap: () => Navigator.pushNamed(context, '/login', arguments: 'doctor'),
+                      onTap: () => context.push('/login?role=doctor'),
                     ),
                     const SizedBox(height: 16),
                     _buildRoleCard(
@@ -72,7 +73,7 @@ class RoleSelectionPage extends StatelessWidget {
                       title: 'Hospital Authority',
                       subtitle: 'Manage hospital operations, staff, laboratories, and resources',
                       gradient: [const Color(0xFF7C3AED), const Color(0xFF6366F1)],
-                      onTap: () => Navigator.pushNamed(context, '/login', arguments: 'authority'),
+                      onTap: () => context.push('/login?role=authority'),
                     ),
                     const SizedBox(height: 16),
                     _buildRoleCard(
@@ -81,7 +82,7 @@ class RoleSelectionPage extends StatelessWidget {
                       title: 'Government Authority',
                       subtitle: 'National health intelligence, disease surveillance, and policy support',
                       gradient: [const Color(0xFFDC2626), const Color(0xFFF97316)],
-                      onTap: () {},
+                      onTap: () {}, // Government portal pending
                     ),
                   ],
                 ),

@@ -1,26 +1,52 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/providers/auth_provider.dart';
 
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
+class LoginPage extends ConsumerStatefulWidget {
+  final String role;
+  const LoginPage({super.key, this.role = 'patient'});
+
+  @override
+  ConsumerState<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends ConsumerState<LoginPage> {
+  bool _isLoading = false;
+
+  void _handleLogin() async {
+    setState(() => _isLoading = true);
+    
+    // Simulate network delay
+    await Future.delayed(const Duration(seconds: 1));
+    
+    // Map URL role to AppConstants role
+    String authRole = 'PATIENT';
+    if (widget.role == 'doctor') authRole = 'DOCTOR';
+    if (widget.role == 'authority') authRole = 'HOSPITAL';
+    if (widget.role == 'govt') authRole = 'GOVT';
+
+    // Update Auth State, which triggers GoRouter redirect automatically
+    await ref.read(authProvider.notifier).login('mock_jwt_token', 'mock_refresh_token', authRole);
+    
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final role = ModalRoute.of(context)?.settings.arguments as String? ?? 'patient';
     String title = 'Citizen Login';
-    String route = '/user';
     IconData icon = Icons.person_rounded;
     List<Color> gradient = [AppColors.primary, const Color(0xFF1976D2)];
 
-    if (role == 'doctor') {
+    if (widget.role == 'doctor') {
       title = 'Doctor Login';
-      route = '/doctor';
       icon = Icons.medical_services_rounded;
       gradient = [AppColors.secondary, const Color(0xFF0EA5E9)];
-    } else if (role == 'authority') {
+    } else if (widget.role == 'authority') {
       title = 'Hospital Authority Login';
-      route = '/authority';
       icon = Icons.local_hospital_rounded;
       gradient = [const Color(0xFF7C3AED), const Color(0xFF6366F1)];
     }
@@ -45,7 +71,8 @@ class LoginPage extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerLeft,
                   child: InkWell(
-                    onTap: () => Navigator.pop(context),
+                    // Uses router to pop
+                    onTap: () => Navigator.of(context).pop(),
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -131,7 +158,7 @@ class LoginPage extends StatelessWidget {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pushReplacementNamed(context, route),
+                    onPressed: _isLoading ? null : _handleLogin,
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -147,7 +174,13 @@ class LoginPage extends StatelessWidget {
                       ),
                       child: Container(
                         alignment: Alignment.center,
-                        child: Text('Sign In', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
+                        child: _isLoading 
+                          ? const SizedBox(
+                              width: 20, 
+                              height: 20, 
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                            )
+                          : Text('Sign In', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15)),
                       ),
                     ),
                   ),

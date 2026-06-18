@@ -1,32 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
-import 'features/auth/pages/role_selection_page.dart';
-import 'features/auth/pages/login_page.dart';
-import 'features/patient/pages/patient_shell.dart';
-import 'features/doctor/pages/doctor_shell.dart';
-import 'features/hospital/pages/hospital_shell.dart';
+import 'core/routing/app_router.dart';
 
 void main() {
-  runApp(const NudhebApp());
+  runApp(const ProviderScope(child: NudhebApp()));
 }
 
-class NudhebApp extends StatelessWidget {
+class NudhebApp extends ConsumerWidget {
   const NudhebApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
+
+    return MaterialApp.router(
       title: 'NUDHEB - Healthcare Ecosystem',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const RoleSelectionPage(),
-        '/login': (context) => const LoginPage(),
-        '/user': (context) => const PatientShell(),
-        '/doctor': (context) => const DoctorShell(),
-        '/authority': (context) => const HospitalShell(),
-      },
+      routerConfig: router,
     );
   }
 }
