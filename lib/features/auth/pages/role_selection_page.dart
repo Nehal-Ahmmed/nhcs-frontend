@@ -82,7 +82,7 @@ class RoleSelectionPage extends StatelessWidget {
                       title: 'Government Authority',
                       subtitle: 'National health intelligence, disease surveillance, and policy support',
                       gradient: [const Color(0xFFDC2626), const Color(0xFFF97316)],
-                      onTap: () {}, // Government portal pending
+                      onTap: () => context.push('/login?role=govt'),
                     ),
                   ],
                 ),

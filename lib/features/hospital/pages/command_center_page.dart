@@ -1,16 +1,21 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/ai_insight_panel.dart';
+import '../../../core/widgets/notification_dropdown.dart';
+import '../../../core/providers/notifications_provider.dart';
+import '../presentation/providers/hospital_providers.dart';
 
-class CommandCenterPage extends StatefulWidget {
+class CommandCenterPage extends ConsumerStatefulWidget {
   const CommandCenterPage({super.key});
 
   @override
-  State<CommandCenterPage> createState() => _CommandCenterPageState();
+  ConsumerState<CommandCenterPage> createState() => _CommandCenterPageState();
 }
 
-class _CommandCenterPageState extends State<CommandCenterPage> {
+class _CommandCenterPageState extends ConsumerState<CommandCenterPage> {
   bool _isRefreshing = false;
   DateTime _lastUpdated = DateTime.now();
 
@@ -18,6 +23,7 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
     setState(() {
       _isRefreshing = true;
     });
+    ref.read(hospitalDashboardStatsProvider.notifier).refresh();
     Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) {
         setState(() {
@@ -30,11 +36,13 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
 
   @override
   Widget build(BuildContext context) {
+    final notifications = ref.watch(hospitalNotificationsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          _buildHeader(),
+          _buildHeader(notifications),
           Expanded(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -48,6 +56,17 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _buildStatsGrid(),
+                        const SizedBox(height: 24),
+                        const AiInsightPanel(
+                          title: 'ICU & Workforce Optimization Forecast',
+                          description: 'AI model predicts a 15% increase in emergency intake over the next 6 hours due to local holiday traffic. ICU capacity is currently at critical levels.',
+                          type: 'warning',
+                          recommendations: [
+                            'Pre-emptively route non-emergency triage to OPD wings.',
+                            'Onboard call-shift nurses for the 8 PM - 2 AM block.',
+                            'Coordinate with Dhaka South general ward for tertiary back-up beds.'
+                          ],
+                        ),
                         const SizedBox(height: 24),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -80,7 +99,7 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(List<AppNotification> notifications) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
@@ -133,12 +152,23 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
                 : const Icon(Icons.refresh_rounded, color: AppColors.primary),
             tooltip: 'Sync Live Data',
           ),
+          const SizedBox(width: 16),
+          NotificationDropdown(
+            notifications: notifications,
+            onMarkRead: (id) => ref.read(hospitalNotificationsProvider.notifier).markAsRead(id),
+            onMarkAllRead: () => ref.read(hospitalNotificationsProvider.notifier).markAllAsRead(),
+            onNavigate: (tabIndex) {
+              ref.read(hospitalNavigationProvider.notifier).state = tabIndex;
+            },
+          ),
         ],
       ),
     );
   }
 
   Widget _buildStatsGrid() {
+    final stats = ref.watch(hospitalDashboardStatsProvider);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final double width = constraints.maxWidth;
@@ -154,7 +184,7 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
           children: [
             _buildStatCard(
               title: 'Active Patients',
-              value: '184',
+              value: stats.activePatients.toString(),
               icon: Icons.people_rounded,
               color: AppColors.primary,
               trend: '+12% from yesterday',
@@ -162,17 +192,17 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
             ),
             _buildStatCard(
               title: 'Bed Occupancy',
-              value: '80.8%',
-              subvalue: '202 / 250 Occupied',
+              value: '${stats.bedOccupancyRate}%',
+              subvalue: '${stats.occupiedBeds} / ${stats.totalBeds} Occupied',
               icon: Icons.bed_rounded,
               color: AppColors.secondary,
-              trend: '48 beds available',
+              trend: '${stats.totalBeds - stats.occupiedBeds} beds available',
               trendColor: AppColors.textSecondary,
             ),
             _buildStatCard(
               title: 'On-Duty Staff',
-              value: '24',
-              subvalue: '10 Doctors, 14 Nurses',
+              value: stats.onDutyStaff.toString(),
+              subvalue: '${stats.onDutyDoctors} Doctors, ${stats.onDutyNurses} Nurses',
               icon: Icons.badge_rounded,
               color: AppColors.accent,
               trend: 'All shifts covered',
@@ -180,8 +210,8 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
             ),
             _buildStatCard(
               title: 'Emergency Intake',
-              value: '5',
-              subvalue: '3 Critical Cases',
+              value: stats.emergencyIntake.toString(),
+              subvalue: '${stats.criticalCases} Critical Cases',
               icon: Icons.emergency_rounded,
               color: AppColors.danger,
               trend: 'Critical Load Warning',
@@ -280,14 +310,7 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
   }
 
   Widget _buildDepartmentLoadList() {
-    final List<Map<String, dynamic>> departments = [
-      {'name': 'Emergency', 'patients': 28, 'staff': 5, 'load': 'Critical', 'color': AppColors.danger},
-      {'name': 'Cardiology', 'patients': 15, 'staff': 3, 'load': 'High', 'color': AppColors.warning},
-      {'name': 'ICU', 'patients': 14, 'staff': 4, 'load': 'Critical', 'color': AppColors.danger},
-      {'name': 'General Ward', 'patients': 82, 'staff': 8, 'load': 'Normal', 'color': AppColors.success},
-      {'name': 'Pediatrics', 'patients': 22, 'staff': 2, 'load': 'Normal', 'color': AppColors.success},
-      {'name': 'Outpatient (OPD)', 'patients': 23, 'staff': 2, 'load': 'Normal', 'color': AppColors.success},
-    ];
+    final stats = ref.watch(hospitalDashboardStatsProvider);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -316,10 +339,17 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: departments.length,
+            itemCount: stats.departmentLoads.length,
             separatorBuilder: (context, index) => const Divider(height: 12),
             itemBuilder: (context, index) {
-              final dept = departments[index];
+              final dept = stats.departmentLoads[index];
+              Color loadColor = AppColors.success;
+              if (dept.load == 'Critical') {
+                loadColor = AppColors.danger;
+              } else if (dept.load == 'High') {
+                loadColor = AppColors.warning;
+              }
+
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
@@ -329,12 +359,12 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            dept['name'],
+                            dept.name,
                             style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            '${dept['patients']} patients • ${dept['staff']} staff active',
+                            '${dept.patients} patients • ${dept.staff} staff active',
                             style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12),
                           ),
                         ],
@@ -343,13 +373,13 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: (dept['color'] as Color).withOpacity(0.1),
+                        color: loadColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        dept['load'],
+                        dept.load,
                         style: GoogleFonts.inter(
-                          color: dept['color'],
+                          color: loadColor,
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                         ),
@@ -428,38 +458,7 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
   }
 
   Widget _buildAlertsPanel() {
-    final List<Map<String, dynamic>> alerts = [
-      {
-        'title': 'Critical Bed Capacity',
-        'desc': 'ICU Occupancy is at 94% (15/16 beds occupied). Only 1 bed remaining.',
-        'time': 'Just now',
-        'type': 'danger',
-      },
-      {
-        'title': 'Medicine Shortage',
-        'desc': 'Paracetamol 500mg stock is below 1,000 tablets (reorder threshold).',
-        'time': '10 mins ago',
-        'type': 'warning',
-      },
-      {
-        'title': 'Ambulance Out of Service',
-        'desc': 'Ambulance #3 is currently offline for scheduled engine maintenance.',
-        'time': '1 hour ago',
-        'type': 'info',
-      },
-      {
-        'title': 'Roster Discrepancy',
-        'desc': 'Pediatrics shift gap identified for night duty on Wednesday.',
-        'time': '2 hours ago',
-        'type': 'warning',
-      },
-      {
-        'title': 'Bio-Waste Collection',
-        'desc': 'Environmental service has completed the weekly waste clearance.',
-        'time': '4 hours ago',
-        'type': 'success',
-      },
-    ];
+    final stats = ref.watch(hospitalDashboardStatsProvider);
 
     return Container(
       decoration: BoxDecoration(
@@ -486,15 +485,15 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
           Expanded(
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              itemCount: alerts.length,
+              itemCount: stats.alerts.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
-                final alert = alerts[index];
+                final alert = stats.alerts[index];
                 Color cardColor;
                 Color textColor;
                 IconData alertIcon;
 
-                switch (alert['type']) {
+                switch (alert.type) {
                   case 'danger':
                     cardColor = AppColors.dangerLight;
                     textColor = AppColors.danger;
@@ -532,7 +531,7 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              alert['title'],
+                              alert.title,
                               style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: textColor),
                             ),
                           ),
@@ -540,14 +539,14 @@ class _CommandCenterPageState extends State<CommandCenterPage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        alert['desc'],
+                        alert.description,
                         style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
                       ),
                       const SizedBox(height: 8),
                       Align(
                         alignment: Alignment.bottomRight,
                         child: Text(
-                          alert['time'],
+                          alert.timeAgo,
                           style: GoogleFonts.inter(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w500),
                         ),
                       ),
@@ -581,10 +580,7 @@ class _LoadChartPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(width, y), gridPaint);
     }
 
-    // Points representing hospital admissions load (24h)
-    // Emergency line points (y values scaled from 0 to 1)
     final List<double> emergencyPoints = [0.2, 0.15, 0.1, 0.3, 0.6, 0.8, 0.9, 0.7, 0.5, 0.6, 0.4, 0.3];
-    // OPD line points
     final List<double> opdPoints = [0.05, 0.05, 0.1, 0.4, 0.8, 0.95, 0.7, 0.6, 0.9, 0.5, 0.2, 0.1];
 
     _drawLine(canvas, size, emergencyPoints, AppColors.danger);
@@ -612,7 +608,6 @@ class _LoadChartPainter extends CustomPainter {
 
     for (int i = 0; i < points.length; i++) {
       final double x = i * stepX;
-      // Invert Y coordinate because canvas y goes down
       final double y = size.height - (points[i] * size.height * 0.8) - 10;
 
       if (i == 0) {
@@ -633,7 +628,6 @@ class _LoadChartPainter extends CustomPainter {
     canvas.drawPath(areaPath, fillPaint);
     canvas.drawPath(path, linePaint);
 
-    // Draw little points at peak
     final Paint pointPaint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;

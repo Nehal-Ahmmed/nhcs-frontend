@@ -1,15 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/ai_insight_panel.dart';
+import '../../../core/widgets/notification_dropdown.dart';
+import '../../../core/providers/notifications_provider.dart';
+import '../presentation/providers/doctor_providers.dart';
+import '../presentation/providers/clinical_workspace_provider.dart';
+import '../data/models/patient_queue_item.dart';
 
-class DoctorDashboardPage extends StatelessWidget {
+class DoctorDashboardPage extends ConsumerWidget {
   const DoctorDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.background,
-      child: Column(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dashboardAsync = ref.watch(doctorDashboardProvider);
+    final queueAsync = ref.watch(patientQueueProvider);
+    final notifications = ref.watch(doctorNotificationsProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
         children: [
           // Header
           Container(
@@ -28,10 +39,18 @@ class DoctorDashboardPage extends StatelessWidget {
                   ],
                 ),
                 const Spacer(),
-                _headerIcon(Icons.notifications_none_rounded, badge: '5'),
+                NotificationDropdown(
+                  notifications: notifications,
+                  onMarkRead: (id) => ref.read(doctorNotificationsProvider.notifier).markAsRead(id),
+                  onMarkAllRead: () => ref.read(doctorNotificationsProvider.notifier).markAllAsRead(),
+                  onNavigate: (tabIndex) {
+                    ref.read(doctorNavigationProvider.notifier).state = tabIndex;
+                  },
+                ),
                 const SizedBox(width: 8),
                 Container(
-                  width: 40, height: 40,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(colors: [AppColors.secondary, Color(0xFF0EA5E9)]),
                     borderRadius: BorderRadius.circular(10),
@@ -41,89 +60,88 @@ class DoctorDashboardPage extends StatelessWidget {
               ],
             ),
           ),
+          
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Stats row
-                  Row(
-                    children: [
-                      _statCard('Today\'s Patients', '32', Icons.people_rounded, AppColors.primary, '+4 from yesterday'),
-                      const SizedBox(width: 16),
-                      _statCard('Follow-ups', '7', Icons.replay_rounded, AppColors.secondary, '2 overdue'),
-                      const SizedBox(width: 16),
-                      _statCard('Emergency', '2', Icons.emergency_rounded, AppColors.danger, '1 critical'),
-                      const SizedBox(width: 16),
-                      _statCard('Pending Reports', '12', Icons.science_rounded, AppColors.warning, '3 new today'),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  // AI Briefing
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppColors.accentLight, AppColors.accentLight.withOpacity(0.3)],
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.accent.withOpacity(0.2)),
-                    ),
-                    child: Row(
+                  // Dashboard summary & AI briefing
+                  dashboardAsync.when(
+                    data: (summary) => Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
-                          child: const Icon(Icons.auto_awesome_rounded, color: AppColors.accent, size: 22),
+                        // Stats Row
+                        Row(
+                          children: [
+                            _statCard('Today\'s Patients', summary.totalAppointments.toString(), Icons.people_rounded, AppColors.primary, '+2 vs yesterday'),
+                            const SizedBox(width: 16),
+                            _statCard('Follow-ups', summary.totalFollowUps.toString(), Icons.replay_rounded, AppColors.secondary, '2 scheduled'),
+                            const SizedBox(width: 16),
+                            _statCard('Emergency', summary.emergencyCases.toString(), Icons.emergency_rounded, AppColors.danger, 'Action required'),
+                            const SizedBox(width: 16),
+                            _statCard('Pending Reports', summary.pendingReports.toString(), Icons.science_rounded, AppColors.warning, '3 unread'),
+                          ],
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('AI Daily Briefing', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.accent)),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Today you have 32 patients scheduled. Key highlights: 7 diabetes cases requiring glucose review, '
-                                '5 hypertension follow-ups, 2 high-risk cardiac patients (Rahim Islam — elevated BP trend, Ali Khan — post-surgery). '
-                                '1 emergency review pending from last night.',
-                                style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary, height: 1.6),
-                              ),
-                            ],
-                          ),
+                        const SizedBox(height: 24),
+                        AiInsightPanel(
+                          title: 'AI Daily Briefing & Patient Summary',
+                          description: summary.aiBriefing,
+                          type: 'success',
+                          recommendations: const [
+                            'Check-in on Emergency consult Patient: Fatema Zohra immediately.',
+                            'Verify pending CBC lab report for Rahim Islam.',
+                            'Prepare weekly clinical shift roster update for approval.'
+                          ],
                         ),
                       ],
                     ),
+                    loading: () => const Center(child: Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: CircularProgressIndicator(),
+                    )),
+                    error: (err, _) => Text('Error loading summary: $err'),
                   ),
+                  
                   const SizedBox(height: 24),
-                  // Patient Queue
+                  
+                  // Patient Queue Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Patient Queue — Today', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600)),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(color: AppColors.successLight, borderRadius: BorderRadius.circular(8)),
-                        child: Text('6 waiting • 2 in progress', style: GoogleFonts.inter(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600)),
+                      queueAsync.when(
+                        data: (queue) {
+                          final waitingCount = queue.where((p) => p.visitType != 'Emergency').length;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(color: AppColors.successLight, borderRadius: BorderRadius.circular(8)),
+                            child: Text('$waitingCount waiting • 1 active', style: GoogleFonts.inter(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600)),
+                          );
+                        },
+                        loading: () => const SizedBox(),
+                        error: (_, __) => const SizedBox(),
                       ),
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _queueCard('Rahim Islam', '45', 'Male', '08:00 AM', 'Follow-up', ['Diabetes', 'Hypertension'], 'Moderate', 'IN_CONSULTATION', AppColors.info),
-                  const SizedBox(height: 12),
-                  _queueCard('Karim Uddin', '38', 'Male', '08:15 AM', 'New Visit', ['Asthma'], 'Low', 'WAITING', AppColors.warning),
-                  const SizedBox(height: 12),
-                  _queueCard('Fatima Begum', '52', 'Female', '08:30 AM', 'Follow-up', ['Cardiac', 'Diabetes'], 'High', 'WAITING', AppColors.warning),
-                  const SizedBox(height: 12),
-                  _queueCard('Ali Khan', '60', 'Male', '08:45 AM', 'Post-Surgery', ['Coronary Bypass'], 'Critical', 'WAITING', AppColors.warning),
-                  const SizedBox(height: 12),
-                  _queueCard('Nusrat Jahan', '28', 'Female', '09:00 AM', 'New Visit', ['Chest Pain'], 'Moderate', 'SCHEDULED', AppColors.textMuted),
-                  const SizedBox(height: 12),
-                  _queueCard('Hasan Ali', '35', 'Male', '09:15 AM', 'Follow-up', ['Hypertension'], 'Low', 'SCHEDULED', AppColors.textMuted),
+                  
+                  // Patient Queue List
+                  queueAsync.when(
+                    data: (queue) => ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: queue.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final item = queue[index];
+                        return _queueCard(context, ref, item);
+                      },
+                    ),
+                    loading: () => const Center(child: CircularProgressIndicator()),
+                    error: (err, _) => Text('Error loading queue: $err'),
+                  ),
                 ],
               ),
             ),
@@ -143,7 +161,8 @@ class DoctorDashboardPage extends StatelessWidget {
         ),
         if (badge != null)
           Positioned(
-            right: 4, top: 4,
+            right: 4,
+            top: 4,
             child: Container(
               padding: const EdgeInsets.all(4),
               decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
@@ -187,32 +206,48 @@ class DoctorDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _queueCard(String name, String age, String gender, String time, String visitType, List<String> conditions, String risk, String status, Color statusColor) {
-    Color riskColor = risk == 'Critical' ? AppColors.danger : risk == 'High' ? Colors.orange : risk == 'Moderate' ? AppColors.warning : AppColors.success;
+  Widget _queueCard(BuildContext context, WidgetRef ref, PatientQueueItem item) {
+    final bool isActive = item.visitType == 'Follow-up' && item.name == 'Rahim Islam'; // Highlight first patient
+    final Color statusColor = isActive ? AppColors.info : AppColors.warning;
+    final String statusText = isActive ? 'IN CONSULTATION' : 'WAITING';
+
+    Color riskColor = item.riskIndicator == 'Emergency' 
+        ? AppColors.danger 
+        : item.riskIndicator == 'High' 
+            ? Colors.orange 
+            : item.riskIndicator == 'Moderate' 
+                ? AppColors.warning 
+                : AppColors.success;
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: status == 'IN_CONSULTATION' ? AppColors.primary.withOpacity(0.3) : AppColors.divider.withOpacity(0.5)),
-        boxShadow: status == 'IN_CONSULTATION' ? [BoxShadow(color: AppColors.primary.withOpacity(0.05), blurRadius: 8)] : null,
+        border: Border.all(color: isActive ? AppColors.primary.withOpacity(0.5) : AppColors.divider.withOpacity(0.5)),
+        boxShadow: isActive ? [BoxShadow(color: AppColors.primary.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 4))] : null,
       ),
       child: Row(
         children: [
           // Time
           SizedBox(
-            width: 70,
-            child: Text(time, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+            width: 80,
+            child: Text(item.time, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
           ),
           // Avatar
           Container(
-            width: 44, height: 44,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: AppColors.primaryLight,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Center(child: Text(name[0], style: GoogleFonts.outfit(color: AppColors.primary, fontSize: 18, fontWeight: FontWeight.bold))),
+            child: Center(
+              child: Text(
+                item.name[0],
+                style: GoogleFonts.outfit(color: AppColors.primary, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
           ),
           const SizedBox(width: 14),
           // Info
@@ -222,16 +257,16 @@ class DoctorDashboardPage extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15)),
+                    Text(item.name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15)),
                     const SizedBox(width: 8),
-                    Text('$age$gender[0]', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+                    Text('${item.age} ${item.gender[0]}', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
                   ],
                 ),
                 const SizedBox(height: 4),
                 Wrap(
                   spacing: 6,
                   runSpacing: 4,
-                  children: conditions.map((c) => Container(
+                  children: item.existingDiseases.map((c) => Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(color: AppColors.warningLight, borderRadius: BorderRadius.circular(4)),
                     child: Text(c, style: GoogleFonts.inter(fontSize: 11, color: Colors.orange.shade800, fontWeight: FontWeight.w500)),
@@ -244,31 +279,39 @@ class DoctorDashboardPage extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(6)),
-            child: Text(visitType, style: GoogleFonts.inter(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w500)),
+            child: Text(item.visitType, style: GoogleFonts.inter(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w500)),
           ),
           const SizedBox(width: 12),
           // Risk
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: riskColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-            child: Text(risk, style: GoogleFonts.inter(color: riskColor, fontSize: 11, fontWeight: FontWeight.w600)),
+            child: Text(item.riskIndicator, style: GoogleFonts.inter(color: riskColor, fontSize: 11, fontWeight: FontWeight.w600)),
           ),
           const SizedBox(width: 12),
           // Status
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-            child: Text(status.replaceAll('_', ' '), style: GoogleFonts.inter(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
+            child: Text(statusText, style: GoogleFonts.inter(color: statusColor, fontSize: 11, fontWeight: FontWeight.w600)),
           ),
-          const SizedBox(width: 12),
-          // Action
+          const SizedBox(width: 16),
+          // Action Button
           ElevatedButton(
-            onPressed: () {},
+            onPressed: () {
+              // Initialize Workspace Provider with this patient's details
+              ref.read(clinicalWorkspaceProvider.notifier).initializePatient(item.healthId, item.name);
+              // Switch tab to Clinical Workspace (Index 1)
+              ref.read(doctorNavigationProvider.notifier).state = 1;
+            },
             style: ElevatedButton.styleFrom(
+              backgroundColor: isActive ? AppColors.primary : Colors.grey.shade200,
+              foregroundColor: isActive ? Colors.white : AppColors.textPrimary,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
-            child: Text(status == 'IN_CONSULTATION' ? 'Continue' : 'Start'),
+            child: Text(isActive ? 'Continue' : 'Start', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
           ),
         ],
       ),

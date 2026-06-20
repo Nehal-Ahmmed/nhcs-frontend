@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../utils/constants.dart';
+import '../utils/constants.dart';
 import '../providers/auth_provider.dart';
 
 class RouteGuards {
@@ -30,6 +30,8 @@ class RouteGuards {
           return '/doctor';
         case AppConstants.roleHospital:
           return '/authority';
+        case AppConstants.roleGovt:
+          return '/government';
         default:
           return '/';
       }
@@ -43,6 +45,9 @@ class RouteGuards {
       return '/login';
     }
     if (state.uri.path.startsWith('/authority') && authState.role != AppConstants.roleHospital) {
+      return '/login';
+    }
+    if (state.uri.path.startsWith('/government') && authState.role != AppConstants.roleGovt) {
       return '/login';
     }
 

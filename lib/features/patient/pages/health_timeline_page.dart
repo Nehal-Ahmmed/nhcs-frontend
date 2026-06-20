@@ -1,15 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../data/models/health_event.dart';
+import '../presentation/providers/patient_providers.dart';
 
-class HealthTimelinePage extends StatelessWidget {
+class HealthTimelinePage extends ConsumerStatefulWidget {
   const HealthTimelinePage({super.key});
 
   @override
+  ConsumerState<HealthTimelinePage> createState() => _HealthTimelinePageState();
+}
+
+class _HealthTimelinePageState extends ConsumerState<HealthTimelinePage> {
+  String _activeFilter = 'All';
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.background,
-      child: Column(
+    final timelineState = ref.watch(patientTimelineProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Column(
         children: [
           // Header
           Container(
@@ -19,93 +31,77 @@ class HealthTimelinePage extends StatelessWidget {
               children: [
                 Text('Health Timeline', style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold)),
                 const Spacer(),
-                _filterChip('All', true),
+                _filterChip('All'),
                 const SizedBox(width: 8),
-                _filterChip('Consultations', false),
+                _filterChip('Consultations'),
                 const SizedBox(width: 8),
-                _filterChip('Lab Tests', false),
+                _filterChip('Lab Tests'),
                 const SizedBox(width: 8),
-                _filterChip('Imaging', false),
+                _filterChip('Imaging'),
               ],
             ),
           ),
           Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _yearLabel('2026'),
-                  _timelineItem(
-                    'Cardiology Consultation',
-                    'Follow-up for hypertension management. Blood pressure elevated.',
-                    'Jun 15, 2026',
-                    'Dr. Ahmed • Dhaka Central Hospital',
-                    Icons.medical_services_rounded,
-                    AppColors.primary,
-                    isFirst: true,
-                  ),
-                  _timelineItem(
-                    'Complete Blood Count (CBC)',
-                    'Routine blood work. All values within normal range.',
-                    'Jun 10, 2026',
-                    'Dhaka Central Hospital Lab',
-                    Icons.science_rounded,
-                    AppColors.secondary,
-                  ),
-                  _timelineItem(
-                    'Lipid Profile Test',
-                    'Cholesterol levels slightly elevated. LDL: 145 mg/dL.',
-                    'Jun 8, 2026',
-                    'Dhaka Central Hospital Lab',
-                    Icons.science_rounded,
-                    AppColors.warning,
-                  ),
-                  _timelineItem(
-                    'ECG Test',
-                    'Electrocardiogram performed. Normal sinus rhythm detected.',
-                    'Jun 5, 2026',
-                    'Cardiology Diagnostics',
-                    Icons.monitor_heart_rounded,
-                    AppColors.info,
-                  ),
-                  _timelineItem(
-                    'General Checkup',
-                    'Annual health checkup. Diabetes management reviewed.',
-                    'May 20, 2026',
-                    'Dr. Fatima • National Medical Center',
-                    Icons.medical_services_rounded,
-                    AppColors.primary,
-                  ),
-                  const SizedBox(height: 16),
-                  _yearLabel('2025'),
-                  _timelineItem(
-                    'Medication Adjustment',
-                    'Metformin dosage increased from 250mg to 500mg.',
-                    'Nov 12, 2025',
-                    'Dr. Ahmed • Dhaka Central Hospital',
-                    Icons.medication_rounded,
-                    Colors.orange,
-                  ),
-                  _timelineItem(
-                    'Eye Examination',
-                    'Diabetic retinopathy screening. No abnormalities found.',
-                    'Sep 5, 2025',
-                    'Dr. Hassan • Eye Care Center',
-                    Icons.visibility_rounded,
-                    Colors.purple,
-                  ),
-                  _timelineItem(
-                    'Diabetes Follow-up',
-                    'HbA1c: 7.2%. Blood glucose trending upward.',
-                    'Jul 18, 2025',
-                    'Dr. Fatima • National Medical Center',
-                    Icons.medical_services_rounded,
-                    AppColors.danger,
-                    isLast: true,
-                  ),
-                ],
-              ),
+            child: timelineState.when(
+              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              error: (err, stack) => Center(child: Text('Error loading timeline: $err')),
+              data: (events) {
+                // Apply Filter
+                final filtered = events.where((e) {
+                  if (_activeFilter == 'All') return true;
+                  if (_activeFilter == 'Consultations') return e.type == HealthEventType.consultation;
+                  if (_activeFilter == 'Lab Tests') return e.type == HealthEventType.labTest;
+                  if (_activeFilter == 'Imaging') return e.type == HealthEventType.imaging;
+                  return true;
+                }).toList();
+
+                if (filtered.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.history_toggle_off_rounded, size: 48, color: AppColors.textMuted),
+                        const SizedBox(height: 16),
+                        Text('No matching health events found.', style: GoogleFonts.inter(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  );
+                }
+
+                // Group by year
+                final Map<String, List<HealthEvent>> grouped = {};
+                for (var event in filtered) {
+                  final year = event.date.year.toString();
+                  grouped.putIfAbsent(year, () => []).add(event);
+                }
+
+                final sortedYears = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(24),
+                  itemCount: sortedYears.length,
+                  itemBuilder: (context, index) {
+                    final year = sortedYears[index];
+                    final yearEvents = grouped[year]!;
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _yearLabel(year),
+                        ...yearEvents.asMap().entries.map((entry) {
+                          final eventIndex = entry.key;
+                          final event = entry.value;
+                          final isFirst = eventIndex == 0;
+                          final isLast = eventIndex == yearEvents.length - 1;
+
+                          return _buildTimelineItem(event, isFirst: isFirst, isLast: isLast);
+                        }),
+                        const SizedBox(height: 16),
+                      ],
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
@@ -113,20 +109,29 @@ class HealthTimelinePage extends StatelessWidget {
     );
   }
 
-  Widget _filterChip(String label, bool selected) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: selected ? AppColors.primary : AppColors.background,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: selected ? AppColors.primary : AppColors.divider),
-      ),
-      child: Text(
-        label,
-        style: GoogleFonts.inter(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: selected ? Colors.white : AppColors.textSecondary,
+  Widget _filterChip(String label) {
+    final selected = _activeFilter == label;
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _activeFilter = label;
+        });
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary : AppColors.background,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.divider),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: selected ? Colors.white : AppColors.textSecondary,
+          ),
         ),
       ),
     );
@@ -146,7 +151,11 @@ class HealthTimelinePage extends StatelessWidget {
     );
   }
 
-  Widget _timelineItem(String title, String description, String date, String source, IconData icon, Color color, {bool isFirst = false, bool isLast = false}) {
+  Widget _buildTimelineItem(HealthEvent event, {required bool isFirst, required bool isLast}) {
+    final iconData = _getEventIcon(event.type);
+    final themeColor = _getEventColor(event.type);
+    final dateStr = "${event.date.day} ${_getMonthName(event.date.month)} ${event.date.year}";
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -160,11 +169,11 @@ class HealthTimelinePage extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.15),
+                    color: themeColor.withOpacity(0.15),
                     shape: BoxShape.circle,
-                    border: Border.all(color: color, width: 2),
+                    border: Border.all(color: themeColor, width: 2),
                   ),
-                  child: Icon(icon, size: 14, color: color),
+                  child: Icon(iconData, size: 14, color: themeColor),
                 ),
                 if (!isLast) Expanded(child: Container(width: 2, color: AppColors.divider)),
               ],
@@ -186,18 +195,18 @@ class HealthTimelinePage extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15))),
-                      Text(date, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+                      Expanded(child: Text(event.title, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15))),
+                      Text(dateStr, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(description, style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
+                  Text(event.description, style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       const Icon(Icons.location_on_outlined, size: 13, color: AppColors.textMuted),
                       const SizedBox(width: 4),
-                      Text(source, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+                      Text('${event.doctorName} • ${event.hospitalName}', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
                     ],
                   ),
                 ],
@@ -207,5 +216,63 @@ class HealthTimelinePage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  IconData _getEventIcon(HealthEventType type) {
+    switch (type) {
+      case HealthEventType.consultation:
+        return Icons.medical_services_rounded;
+      case HealthEventType.labTest:
+        return Icons.science_rounded;
+      case HealthEventType.imaging:
+        return Icons.description_outlined;
+      case HealthEventType.surgery:
+        return Icons.local_hospital_rounded;
+      case HealthEventType.admission:
+        return Icons.meeting_room_rounded;
+      case HealthEventType.discharge:
+        return Icons.logout_rounded;
+      case HealthEventType.vaccination:
+        return Icons.vaccines_rounded;
+      case HealthEventType.prescription:
+        return Icons.medication_rounded;
+      case HealthEventType.followUp:
+        return Icons.event_note_rounded;
+      case HealthEventType.emergency:
+        return Icons.flash_on_rounded;
+    }
+  }
+
+  Color _getEventColor(HealthEventType type) {
+    switch (type) {
+      case HealthEventType.consultation:
+        return AppColors.primary;
+      case HealthEventType.labTest:
+        return AppColors.secondary;
+      case HealthEventType.imaging:
+        return AppColors.warning;
+      case HealthEventType.surgery:
+        return Colors.red;
+      case HealthEventType.admission:
+        return Colors.purple;
+      case HealthEventType.discharge:
+        return Colors.blue;
+      case HealthEventType.vaccination:
+        return AppColors.success;
+      case HealthEventType.prescription:
+        return Colors.teal;
+      case HealthEventType.followUp:
+        return Colors.orange;
+      case HealthEventType.emergency:
+        return Colors.redAccent;
+    }
+  }
+
+  String _getMonthName(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (month >= 1 && month <= 12) {
+      return months[month - 1];
+    }
+    return '';
   }
 }

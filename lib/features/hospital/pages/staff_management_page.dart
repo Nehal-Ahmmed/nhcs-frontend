@@ -1,46 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../data/models/staff_member.dart';
+import '../presentation/providers/hospital_providers.dart';
 
-class StaffManagementPage extends StatefulWidget {
+class StaffManagementPage extends ConsumerStatefulWidget {
   const StaffManagementPage({super.key});
 
   @override
-  State<StaffManagementPage> createState() => _StaffManagementPageState();
+  ConsumerState<StaffManagementPage> createState() => _StaffManagementPageState();
 }
 
-class _StaffManagementPageState extends State<StaffManagementPage> with SingleTickerProviderStateMixin {
+class _StaffManagementPageState extends ConsumerState<StaffManagementPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   String _selectedRoleFilter = 'All';
-
-  // State lists
-  List<Map<String, String>> _staffList = [
-    {'name': 'Dr. Ahmed Khan', 'role': 'Doctor', 'dept': 'Cardiology', 'shift': 'Morning', 'status': 'Active'},
-    {'name': 'Dr. Subrata Sen', 'role': 'Doctor', 'dept': 'Emergency', 'shift': 'Evening', 'status': 'Active'},
-    {'name': 'Dr. Fatima Chowdhury', 'role': 'Doctor', 'dept': 'Pediatrics', 'shift': 'Morning', 'status': 'Active'},
-    {'name': 'Nurse Rabia Akhter', 'role': 'Nurse', 'dept': 'Emergency', 'shift': 'Night', 'status': 'Active'},
-    {'name': 'Nurse Milon Mia', 'role': 'Nurse', 'dept': 'General Ward', 'shift': 'Morning', 'status': 'Active'},
-    {'name': 'Tech Rifat Hasan', 'role': 'Technician', 'dept': 'Laboratory', 'shift': 'Evening', 'status': 'Active'},
-    {'name': 'Pharm Salma Begum', 'role': 'Pharmacist', 'dept': 'Pharmacy', 'shift': 'Morning', 'status': 'Active'},
-  ];
-
-  List<Map<String, String>> _pendingDoctors = [
-    {
-      'name': 'Dr. Nihad Zaman',
-      'bmdc': 'BMDC-8921-2023',
-      'specialty': 'Neurology',
-      'experience': '8 Years',
-      'email': 'nihad.zaman@nudheb.gov.bd',
-    },
-    {
-      'name': 'Dr. Tanzina Rashid',
-      'bmdc': 'BMDC-4210-2021',
-      'specialty': 'Gynecology',
-      'experience': '6 Years',
-      'email': 'tanzina.r@nudheb.gov.bd',
-    }
-  ];
 
   @override
   void initState() {
@@ -55,39 +30,86 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
     super.dispose();
   }
 
-  void _addStaffMember(Map<String, String> newStaff) {
-    setState(() {
-      _staffList.add(newStaff);
-    });
-  }
-
-  void _approveDoctor(int index) {
-    final doc = _pendingDoctors[index];
-    setState(() {
-      _staffList.add({
-        'name': doc['name']!,
-        'role': 'Doctor',
-        'dept': doc['specialty']!,
-        'shift': 'Morning',
-        'status': 'Active',
-      });
-      _pendingDoctors.removeAt(index);
-    });
+  void _addStaffMember(String name, String role, String dept, String shift) {
+    final staffList = ref.read(staffRosterProvider);
+    final id = 'S-${(staffList.length + 1).toString().padLeft(3, '0')}';
+    final newStaff = StaffMember(
+      id: id,
+      name: name,
+      role: role,
+      dept: dept,
+      status: 'Active',
+      shifts: {'Monday': shift},
+    );
+    ref.read(staffRosterProvider.notifier).addStaffMember(newStaff);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Approved ${doc['name']}! Added to Hospital Staff Directory.'),
+        content: Text('Added $name to Hospital Directory.'),
         backgroundColor: AppColors.success,
       ),
     );
   }
 
-  void _rejectDoctor(int index) {
-    setState(() {
-      _pendingDoctors.removeAt(index);
-    });
+  void _approveDoctor(String id, String name) {
+    ref.read(doctorVerificationsProvider.notifier).verifyDoctor(id, true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Approved $name! Added to Hospital Staff Directory.'),
+        backgroundColor: AppColors.success,
+      ),
+    );
+  }
+
+  void _rejectDoctor(String id) {
+    ref.read(doctorVerificationsProvider.notifier).verifyDoctor(id, false);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Application rejected.'), backgroundColor: AppColors.danger),
+    );
+  }
+
+  void _editShiftDialog(StaffMember staff, String day) {
+    final shiftCont = TextEditingController(text: staff.shifts[day] ?? 'Off');
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit Duty Shift for ${staff.name}', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Day: $day', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: ['Off', 'OPD', 'Ward', 'Emergency', 'Night'].contains(shiftCont.text) ? shiftCont.text : 'OPD',
+                decoration: const InputDecoration(labelText: 'Shift Designation'),
+                onChanged: (val) {
+                  if (val != null) {
+                    shiftCont.text = val;
+                  }
+                },
+                items: ['Off', 'OPD', 'Ward', 'Emergency', 'Night']
+                    .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                    .toList(),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                ref.read(staffRosterProvider.notifier).updateShift(staff.id, day, shiftCont.text);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Updated shift for ${staff.name} on $day to ${shiftCont.text}')),
+                );
+              },
+              child: const Text('Save Shift'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -171,11 +193,12 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
   }
 
   Widget _buildDirectoryTab() {
-    // Filter staff
+    final staffList = ref.watch(staffRosterProvider);
     final query = _searchController.text.toLowerCase();
-    final list = _staffList.where((staff) {
-      final matchesQuery = staff['name']!.toLowerCase().contains(query) || staff['dept']!.toLowerCase().contains(query);
-      final matchesRole = _selectedRoleFilter == 'All' || staff['role'] == _selectedRoleFilter;
+    
+    final filtered = staffList.where((staff) {
+      final matchesQuery = staff.name.toLowerCase().contains(query) || staff.dept.toLowerCase().contains(query);
+      final matchesRole = _selectedRoleFilter == 'All' || staff.role == _selectedRoleFilter;
       return matchesQuery && matchesRole;
     }).toList();
 
@@ -218,41 +241,44 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
             const Divider(height: 1),
             // Table
             Expanded(
-              child: list.isEmpty
+              child: filtered.isEmpty
                   ? Center(
                       child: Text('No staff matches filter criteria', style: GoogleFonts.inter(color: AppColors.textSecondary)),
                     )
                   : SingleChildScrollView(
                       scrollDirection: Axis.vertical,
-                      child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('Name')),
-                          DataColumn(label: Text('Role')),
-                          DataColumn(label: Text('Department')),
-                          DataColumn(label: Text('Shift')),
-                          DataColumn(label: Text('Status')),
-                        ],
-                        rows: list.map((staff) {
-                          return DataRow(cells: [
-                            DataCell(Text(staff['name']!, style: GoogleFonts.inter(fontWeight: FontWeight.bold))),
-                            DataCell(Text(staff['role']!)),
-                            DataCell(Text(staff['dept']!)),
-                            DataCell(Text(staff['shift']!)),
-                            DataCell(
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AppColors.successLight,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  staff['status']!,
-                                  style: GoogleFonts.inter(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: DataTable(
+                          columns: const [
+                            DataColumn(label: Text('Name')),
+                            DataColumn(label: Text('Role')),
+                            DataColumn(label: Text('Department')),
+                            DataColumn(label: Text('Shift (Mon)')),
+                            DataColumn(label: Text('Status')),
+                          ],
+                          rows: filtered.map((staff) {
+                            return DataRow(cells: [
+                              DataCell(Text(staff.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold))),
+                              DataCell(Text(staff.role)),
+                              DataCell(Text(staff.dept)),
+                              DataCell(Text(staff.shifts['Monday'] ?? 'Off')),
+                              DataCell(
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.successLight,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    staff.status,
+                                    style: GoogleFonts.inter(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ]);
-                        }).toList(),
+                            ]);
+                          }).toList(),
+                        ),
                       ),
                     ),
             ),
@@ -263,14 +289,9 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
   }
 
   Widget _buildRosterTab() {
-    // A nice interactive weekly roster table mockup
     final List<String> days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-    final List<Map<String, dynamic>> roster = [
-      {'name': 'Dr. Ahmed Khan', 'shifts': ['OPD', 'OPD', 'Ward', 'Off', 'OPD', 'Ward', 'Off']},
-      {'name': 'Dr. Subrata Sen', 'shifts': ['Emergency', 'Emergency', 'Off', 'Emergency', 'Off', 'OPD', 'Ward']},
-      {'name': 'Dr. Fatima', 'shifts': ['Off', 'OPD', 'Ward', 'Ward', 'OPD', 'Off', 'Ward']},
-      {'name': 'Nurse Rabia', 'shifts': ['Ward', 'Night', 'Night', 'Off', 'Ward', 'OPD', 'Off']},
-    ];
+    final staffList = ref.watch(staffRosterProvider);
+    final clinicalStaff = staffList.where((s) => s.role == 'Doctor' || s.role == 'Nurse').toList();
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -285,13 +306,12 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
                 const DataColumn(label: Text('Staff Member')),
                 ...days.map((d) => DataColumn(label: Text(d))),
               ],
-              rows: roster.map((item) {
-                final String name = item['name'];
-                final List<String> shifts = item['shifts'];
+              rows: clinicalStaff.map((staff) {
                 return DataRow(
                   cells: [
-                    DataCell(Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.bold))),
-                    ...shifts.map((shift) {
+                    DataCell(Text(staff.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold))),
+                    ...days.map((day) {
+                      final shift = staff.shifts[day] ?? 'Off';
                       Color color = AppColors.textSecondary;
                       Color bg = AppColors.background;
                       if (shift == 'Emergency') {
@@ -303,15 +323,14 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
                       } else if (shift == 'Ward') {
                         color = AppColors.secondary;
                         bg = AppColors.secondaryLight;
+                      } else if (shift == 'Night') {
+                        color = Colors.indigo;
+                        bg = Colors.indigo.shade50;
                       }
 
                       return DataCell(
                         InkWell(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Editing shift for $name')),
-                            );
-                          },
+                          onTap: () => _editShiftDialog(staff, day),
                           child: Container(
                             margin: const EdgeInsets.symmetric(vertical: 4),
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -339,7 +358,9 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
   }
 
   Widget _buildApplicationsTab() {
-    return _pendingDoctors.isEmpty
+    final pendingDoctors = ref.watch(doctorVerificationsProvider).where((r) => r.status == 'Pending').toList();
+
+    return pendingDoctors.isEmpty
         ? Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -360,10 +381,10 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
           )
         : ListView.separated(
             padding: const EdgeInsets.all(24),
-            itemCount: _pendingDoctors.length,
+            itemCount: pendingDoctors.length,
             separatorBuilder: (context, index) => const SizedBox(height: 16),
             itemBuilder: (context, index) {
-              final doc = _pendingDoctors[index];
+              final doc = pendingDoctors[index];
               return Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -384,12 +405,11 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(doc['name']!, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text(doc.name, style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 4),
-                          Text('BMDC Registration: ${doc['bmdc']}', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12)),
-                          Text('Specialization: ${doc['specialty']}', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12)),
-                          Text('Experience: ${doc['experience']}', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12)),
-                          Text('Email: ${doc['email']}', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12)),
+                          Text('BMDC Registration: ${doc.bmdcNo}', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12)),
+                          Text('Specialization: ${doc.specialization}', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12)),
+                          Text('Submitted Date: ${doc.date}', style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12)),
                           const SizedBox(height: 16),
                           Row(
                             children: [
@@ -411,7 +431,7 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
                     Row(
                       children: [
                         OutlinedButton(
-                          onPressed: () => _rejectDoctor(index),
+                          onPressed: () => _rejectDoctor(doc.id),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.danger,
                             side: const BorderSide(color: AppColors.danger),
@@ -421,7 +441,7 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
                         ),
                         const SizedBox(width: 12),
                         ElevatedButton(
-                          onPressed: () => _approveDoctor(index),
+                          onPressed: () => _approveDoctor(doc.id, doc.name),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.success,
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -437,12 +457,12 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
           );
   }
 
-  void _showCredentialsDialog(Map<String, String> doc) {
+  void _showCredentialsDialog(DoctorVerificationRequest doc) {
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('${doc['name']} - Credentials Summary', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          title: Text('${doc.name} - Credentials Summary', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -544,13 +564,7 @@ class _StaffManagementPageState extends State<StaffManagementPage> with SingleTi
                 ElevatedButton(
                   onPressed: () {
                     if (nameCont.text.isNotEmpty) {
-                      _addStaffMember({
-                        'name': nameCont.text,
-                        'role': role,
-                        'dept': dept,
-                        'shift': shift,
-                        'status': 'Active',
-                      });
+                      _addStaffMember(nameCont.text, role, dept, shift);
                       Navigator.pop(context);
                     }
                   },

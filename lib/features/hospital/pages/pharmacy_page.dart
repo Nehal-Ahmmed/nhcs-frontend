@@ -1,102 +1,44 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../data/models/pharmacy_item.dart';
+import '../data/repositories/hospital_repository.dart';
+import '../presentation/providers/hospital_providers.dart';
 
-class PharmacyPage extends StatefulWidget {
+class PharmacyPage extends ConsumerStatefulWidget {
   const PharmacyPage({super.key});
 
   @override
-  State<PharmacyPage> createState() => _PharmacyPageState();
+  ConsumerState<PharmacyPage> createState() => _PharmacyPageState();
 }
 
-class _PharmacyPageState extends State<PharmacyPage> {
+class _PharmacyPageState extends ConsumerState<PharmacyPage> {
   final TextEditingController _rxController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   String _selectedCategoryFilter = 'All';
 
-  // State Inventory
-  List<Map<String, dynamic>> _inventory = [
-    {'name': 'Metformin 500mg', 'generic': 'Metformin HCl', 'category': 'Antidiabetic', 'stock': 5000, 'min': 1000, 'price': 'BDT 5.00'},
-    {'name': 'Amlodipine 5mg', 'generic': 'Amlodipine Besylate', 'category': 'Antihypertensive', 'stock': 2400, 'min': 500, 'price': 'BDT 8.00'},
-    {'name': 'Aspirin 75mg', 'generic': 'Acetylsalicylic Acid', 'category': 'Antiplatelet', 'stock': 1800, 'min': 500, 'price': 'BDT 2.00'},
-    {'name': 'Paracetamol 500mg', 'generic': 'Acetaminophen', 'category': 'Analgesic', 'stock': 400, 'min': 1000, 'price': 'BDT 1.50'}, // Alert
-    {'name': 'Amoxicillin 500mg', 'generic': 'Amoxicillin Trihydrate', 'category': 'Antibiotic', 'stock': 1200, 'min': 300, 'price': 'BDT 12.00'},
-    {'name': 'Atorvastatin 10mg', 'generic': 'Atorvastatin Calcium', 'category': 'Cardiovascular', 'stock': 150, 'min': 500, 'price': 'BDT 15.00'}, // Alert
-  ];
-
-  // Prescription Mock Database
-  final Map<String, Map<String, dynamic>> _mockPrescriptions = {
-    'RX-9921': {
-      'patient': 'Rahim Islam',
-      'id': 'RX-9921',
-      'doctor': 'Dr. Ahmed Khan',
-      'date': 'Jun 15, 2026',
-      'items': [
-        {'medicine': 'Metformin 500mg', 'qty': 60, 'instruction': '1 tablet twice daily after meals'},
-        {'medicine': 'Amlodipine 5mg', 'qty': 30, 'instruction': '1 tablet daily in morning'},
-      ]
-    },
-    'RX-1024': {
-      'patient': 'Jahanara Begum',
-      'id': 'RX-1024',
-      'doctor': 'Dr. Fatima',
-      'date': 'Jun 14, 2026',
-      'items': [
-        {'medicine': 'Amoxicillin 500mg', 'qty': 21, 'instruction': '1 tablet 3 times daily for 7 days'},
-        {'medicine': 'Paracetamol 500mg', 'qty': 10, 'instruction': '1 tablet as needed for pain'},
-      ]
-    }
-  };
-
   Map<String, dynamic>? _loadedPrescription;
   bool _rxSearched = false;
 
-  void _searchRx() {
+  void _searchRx() async {
     final query = _rxController.text.trim();
+    final repo = ref.read(hospitalRepositoryProvider);
+    final rx = await repo.getPrescriptionById(query);
+
     setState(() {
       _rxSearched = true;
-      if (_mockPrescriptions.containsKey(query)) {
-        _loadedPrescription = _mockPrescriptions[query];
-      } else {
-        _loadedPrescription = null;
-      }
+      _loadedPrescription = rx;
     });
   }
 
-  void _dispensePrescription() {
+  void _dispensePrescription() async {
     if (_loadedPrescription != null) {
-      final List items = _loadedPrescription!['items'];
-      bool canDispense = true;
-      String errorMsg = '';
+      final String rxId = _loadedPrescription!['id'] ?? '';
+      final success = await ref.read(pharmacyInventoryProvider.notifier).dispensePrescription(rxId);
 
-      // Check stock first
-      for (var item in items) {
-        final String medName = item['medicine'];
-        final int reqQty = item['qty'];
-
-        final invItem = _inventory.firstWhere((i) => i['name'] == medName, orElse: () => {});
-        if (invItem.isEmpty) {
-          canDispense = false;
-          errorMsg = '$medName is not in the hospital formulary database.';
-          break;
-        } else if ((invItem['stock'] as int) < reqQty) {
-          canDispense = false;
-          errorMsg = 'Insufficient stock for $medName. Available: ${invItem['stock']}, Required: $reqQty';
-          break;
-        }
-      }
-
-      if (canDispense) {
+      if (success) {
         setState(() {
-          // Deduct from inventory stock
-          for (var item in items) {
-            final String medName = item['medicine'];
-            final int reqQty = item['qty'];
-            final idx = _inventory.indexWhere((i) => i['name'] == medName);
-            if (idx != -1) {
-              _inventory[idx]['stock'] = (_inventory[idx]['stock'] as int) - reqQty;
-            }
-          }
           _loadedPrescription = null;
           _rxSearched = false;
           _rxController.clear();
@@ -113,7 +55,7 @@ class _PharmacyPageState extends State<PharmacyPage> {
           context: context,
           builder: (context) => AlertDialog(
             title: Text('Stock Out Warning', style: GoogleFonts.outfit(color: AppColors.danger, fontWeight: FontWeight.bold)),
-            content: Text(errorMsg),
+            content: const Text('Insufficient stock or items not found in the hospital inventory formulary.'),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context), child: const Text('Dismiss')),
             ],
@@ -125,11 +67,12 @@ class _PharmacyPageState extends State<PharmacyPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter inventory
+    final inventoryList = ref.watch(pharmacyInventoryProvider);
     final query = _searchController.text.toLowerCase();
-    final filteredInventory = _inventory.where((item) {
-      final matchesQuery = item['name'].toLowerCase().contains(query) || item['generic'].toLowerCase().contains(query);
-      final matchesCategory = _selectedCategoryFilter == 'All' || item['category'] == _selectedCategoryFilter;
+    
+    final filteredInventory = inventoryList.where((item) {
+      final matchesQuery = item.name.toLowerCase().contains(query) || item.generic.toLowerCase().contains(query);
+      final matchesCategory = _selectedCategoryFilter == 'All' || item.category == _selectedCategoryFilter;
       return matchesQuery && matchesCategory;
     }).toList();
 
@@ -175,7 +118,7 @@ class _PharmacyPageState extends State<PharmacyPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildStockAlertsCard(),
+                  _buildStockAlertsCard(inventoryList),
                   const SizedBox(height: 24),
                   Expanded(
                     child: Card(
@@ -211,16 +154,16 @@ class _PharmacyPageState extends State<PharmacyPage> {
                                     separatorBuilder: (context, index) => const Divider(height: 1),
                                     itemBuilder: (context, index) {
                                       final item = filteredInventory[index];
-                                      final bool isLow = (item['stock'] as int) < (item['min'] as int);
+                                      final bool isLow = item.stock < item.min;
                                       return ListTile(
-                                        title: Text(item['name'], style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
-                                        subtitle: Text('${item['generic']} • ${item['category']}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+                                        title: Text(item.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
+                                        subtitle: Text('${item.generic} • ${item.category}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
                                         trailing: Column(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           crossAxisAlignment: CrossAxisAlignment.end,
                                           children: [
                                             Text(
-                                              'Stock: ${item['stock']}',
+                                              'Stock: ${item.stock}',
                                               style: GoogleFonts.inter(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 13,
@@ -228,7 +171,7 @@ class _PharmacyPageState extends State<PharmacyPage> {
                                               ),
                                             ),
                                             Text(
-                                              item['price'],
+                                              item.price,
                                               style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11),
                                             ),
                                           ],
@@ -427,8 +370,8 @@ class _PharmacyPageState extends State<PharmacyPage> {
     );
   }
 
-  Widget _buildStockAlertsCard() {
-    final lowStockItems = _inventory.where((i) => (i['stock'] as int) < (i['min'] as int)).toList();
+  Widget _buildStockAlertsCard(List<PharmacyItem> inventoryList) {
+    final lowStockItems = inventoryList.where((i) => i.stock < i.min).toList();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -463,9 +406,9 @@ class _PharmacyPageState extends State<PharmacyPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(item['name'], style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.danger)),
+                          Text(item.name, style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.danger)),
                           Text(
-                            'Stock: ${item['stock']} (Min: ${item['min']})',
+                            'Stock: ${item.stock} (Min: ${item.min})',
                             style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.danger),
                           ),
                         ],
@@ -476,5 +419,12 @@ class _PharmacyPageState extends State<PharmacyPage> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _rxController.dispose();
+    _searchController.dispose();
+    super.dispose();
   }
 }

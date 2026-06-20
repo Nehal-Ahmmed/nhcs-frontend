@@ -1,105 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../data/models/lab_test_order.dart';
+import '../presentation/providers/hospital_providers.dart';
 
-class LaboratoryPage extends StatefulWidget {
+class LaboratoryPage extends ConsumerStatefulWidget {
   const LaboratoryPage({super.key});
 
   @override
-  State<LaboratoryPage> createState() => _LaboratoryPageState();
+  ConsumerState<LaboratoryPage> createState() => _LaboratoryPageState();
 }
 
-class _LaboratoryPageState extends State<LaboratoryPage> {
-  // Test records database in state for simulation
-  List<Map<String, dynamic>> _labOrders = [
-    {
-      'id': 'LB-101',
-      'patient': 'Rahim Islam',
-      'healthId': 'NUD-892-441-X7',
-      'test': 'Complete Blood Count (CBC)',
-      'doctor': 'Dr. Ahmed Khan',
-      'status': 'Ordered',
-      'results': {},
-    },
-    {
-      'id': 'LB-102',
-      'patient': 'Jahanara Begum',
-      'healthId': 'NUD-123-456-A1',
-      'test': 'Fasting Blood Glucose',
-      'doctor': 'Trauma Lead',
-      'status': 'Sample Collected',
-      'results': {},
-    },
-    {
-      'id': 'LB-103',
-      'patient': 'Kamal Hossain',
-      'healthId': 'NUD-987-654-B2',
-      'test': 'Lipid Profile',
-      'doctor': 'Dr. Fatima',
-      'status': 'Processing',
-      'results': {},
-    },
-    {
-      'id': 'LB-104',
-      'patient': 'Abdul Karim',
-      'healthId': 'NUD-111-222-A2',
-      'test': 'Serum Creatinine',
-      'doctor': 'Dr. Ahmed Khan',
-      'status': 'Verified',
-      'results': {'Creatinine': '1.1 mg/dL'},
-    },
-    {
-      'id': 'LB-105',
-      'patient': 'Hasan Ali',
-      'healthId': 'NUD-444-555-C3',
-      'test': 'ECG / Electrocardiogram',
-      'doctor': 'Trauma Lead',
-      'status': 'Published',
-      'results': {'Rhythm': 'Normal Sinus Rhythm'},
-    }
-  ];
+class _LaboratoryPageState extends ConsumerState<LaboratoryPage> {
 
-  void _nextStage(String orderId) {
-    final idx = _labOrders.indexWhere((o) => o['id'] == orderId);
-    if (idx != -1) {
-      final currentStatus = _labOrders[idx]['status'];
-      String nextStatus = currentStatus;
-
-      if (currentStatus == 'Ordered') {
-        nextStatus = 'Sample Collected';
-      } else if (currentStatus == 'Sample Collected') {
-        nextStatus = 'Processing';
-      } else if (currentStatus == 'Processing') {
-        _showResultEntryDialog(orderId);
-        return; // Dialog handles the transition
-      } else if (currentStatus == 'Verified') {
-        nextStatus = 'Published';
-      }
-
-      setState(() {
-        _labOrders[idx]['status'] = nextStatus;
-      });
-
+  void _nextStage(LabTestOrder order) {
+    if (order.status == 'Processing') {
+      _showResultEntryDialog(order);
+    } else {
+      ref.read(laboratoryQueueProvider.notifier).advanceStage(order.id);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Order $orderId moved to $nextStatus')),
+        SnackBar(content: Text('Order ${order.id} advanced.')),
       );
     }
   }
 
   void _submitResults(String orderId, Map<String, String> results) {
-    final idx = _labOrders.indexWhere((o) => o['id'] == orderId);
-    if (idx != -1) {
-      setState(() {
-        _labOrders[idx]['results'] = results;
-        _labOrders[idx]['status'] = 'Verified';
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Results submitted for $orderId. Awaiting senior approval.'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    }
+    ref.read(laboratoryQueueProvider.notifier).advanceStage(orderId, results: results);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Results submitted for $orderId. Awaiting senior verification.'),
+        backgroundColor: AppColors.success,
+      ),
+    );
   }
 
   @override
@@ -154,10 +87,11 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
   }
 
   Widget _buildWorkloadStats() {
-    final ordered = _labOrders.where((o) => o['status'] == 'Ordered').length;
-    final processing = _labOrders.where((o) => o['status'] == 'Processing' || o['status'] == 'Sample Collected').length;
-    final verified = _labOrders.where((o) => o['status'] == 'Verified').length;
-    final completed = _labOrders.where((o) => o['status'] == 'Published').length;
+    final labOrders = ref.watch(laboratoryQueueProvider);
+    final ordered = labOrders.where((o) => o.status == 'Ordered').length;
+    final processing = labOrders.where((o) => o.status == 'Processing' || o.status == 'Sample Collected').length;
+    final verified = labOrders.where((o) => o.status == 'Verified').length;
+    final completed = labOrders.where((o) => o.status == 'Published').length;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -202,7 +136,8 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
   }
 
   Widget _buildKanbanColumn(String status, IconData icon, Color color) {
-    final list = _labOrders.where((o) => o['status'] == status).toList();
+    final labOrders = ref.watch(laboratoryQueueProvider);
+    final list = labOrders.where((o) => o.status == status).toList();
 
     return Container(
       width: 280,
@@ -255,8 +190,8 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
     );
   }
 
-  Widget _buildKanbanCard(Map<String, dynamic> order, Color themeColor) {
-    final String status = order['status'];
+  Widget _buildKanbanCard(LabTestOrder order, Color themeColor) {
+    final String status = order.status;
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -272,25 +207,25 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                order['id'],
+                order.id,
                 style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 11, color: AppColors.textMuted),
               ),
-              if (order['results'].isNotEmpty)
+              if (order.results.isNotEmpty)
                 const Icon(Icons.description_rounded, size: 14, color: AppColors.textSecondary),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            order['test'],
+            order.test,
             style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
           Text(
-            'Patient: ${order['patient']}',
+            'Patient: ${order.patient}',
             style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
           ),
           Text(
-            'Dr: ${order['doctor']}',
+            'Dr: ${order.doctor}',
             style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted),
           ),
           const SizedBox(height: 12),
@@ -305,7 +240,7 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
               ),
               if (status != 'Published')
                 InkWell(
-                  onTap: () => _nextStage(order['id']),
+                  onTap: () => _nextStage(order),
                   borderRadius: BorderRadius.circular(6),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -334,11 +269,7 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
     );
   }
 
-  void _showResultEntryDialog(String orderId) {
-    final idx = _labOrders.indexWhere((o) => o['id'] == orderId);
-    if (idx == -1) return;
-    final order = _labOrders[idx];
-
+  void _showResultEntryDialog(LabTestOrder order) {
     final keyCont = TextEditingController(text: 'Hemoglobin');
     final valCont = TextEditingController(text: '14.2 g/dL');
 
@@ -346,13 +277,13 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Enter Lab Results (${order['id']})', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          title: Text('Enter Lab Results (${order.id})', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Test: ${order['test']}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
-              Text('Patient: ${order['patient']}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
+              Text('Test: ${order.test}', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14)),
+              Text('Patient: ${order.patient}', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary)),
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 16),
@@ -399,7 +330,7 @@ class _LaboratoryPageState extends State<LaboratoryPage> {
             ElevatedButton(
               onPressed: () {
                 if (keyCont.text.isNotEmpty && valCont.text.isNotEmpty) {
-                  _submitResults(orderId, {keyCont.text: valCont.text});
+                  _submitResults(order.id, {keyCont.text: valCont.text});
                   Navigator.pop(context);
                 }
               },

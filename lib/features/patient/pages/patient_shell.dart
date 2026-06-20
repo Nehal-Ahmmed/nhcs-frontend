@@ -1,22 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/widgets/sidebar.dart';
+import '../presentation/providers/patient_providers.dart';
 import 'patient_dashboard_page.dart';
 import 'health_timeline_page.dart';
 import 'appointments_page.dart';
 import 'medical_vault_page.dart';
 import 'patient_profile_page.dart';
 
-class PatientShell extends StatefulWidget {
+class PatientShell extends ConsumerWidget {
   const PatientShell({super.key});
 
-  @override
-  State<PatientShell> createState() => _PatientShellState();
-}
-
-class _PatientShellState extends State<PatientShell> {
-  int _selectedIndex = 0;
-
-  final List<Widget> _pages = const [
+  static const List<Widget> _pages = [
     PatientDashboardPage(),
     HealthTimelinePage(),
     AppointmentsPage(),
@@ -26,15 +21,17 @@ class _PatientShellState extends State<PatientShell> {
   ];
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selectedIndex = ref.watch(patientNavigationProvider);
+
     return Scaffold(
       body: Row(
         children: [
           PatientSidebar(
-            selectedIndex: _selectedIndex,
-            onItemSelected: (i) => setState(() => _selectedIndex = i),
+            selectedIndex: selectedIndex,
+            onItemSelected: (i) => ref.read(patientNavigationProvider.notifier).state = i,
           ),
-          Expanded(child: _pages[_selectedIndex]),
+          Expanded(child: _pages[selectedIndex]),
         ],
       ),
     );

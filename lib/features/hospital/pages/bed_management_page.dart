@@ -1,119 +1,76 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../data/models/bed_allocation.dart';
+import '../presentation/providers/hospital_providers.dart';
 
-class BedManagementPage extends StatefulWidget {
+class BedManagementPage extends ConsumerStatefulWidget {
   const BedManagementPage({super.key});
 
   @override
-  State<BedManagementPage> createState() => _BedManagementPageState();
+  ConsumerState<BedManagementPage> createState() => _BedManagementPageState();
 }
 
-class _BedManagementPageState extends State<BedManagementPage> {
+class _BedManagementPageState extends ConsumerState<BedManagementPage> {
   String _selectedWard = 'General Ward (Male)';
 
-  // Mock beds database in state for simulation
-  late List<Map<String, dynamic>> _beds;
-
-  @override
-  void initState() {
-    super.initState();
-    _beds = [
-      {'id': 'B-101', 'ward': 'General Ward (Male)', 'number': 'Bed 101', 'status': 'Occupied', 'patient': 'Rahim Islam', 'healthId': 'NUD-892-441-X7', 'doctor': 'Dr. Ahmed Khan', 'days': 3},
-      {'id': 'B-102', 'ward': 'General Ward (Male)', 'number': 'Bed 102', 'status': 'Available'},
-      {'id': 'B-103', 'ward': 'General Ward (Male)', 'number': 'Bed 103', 'status': 'Available'},
-      {'id': 'B-104', 'ward': 'General Ward (Male)', 'number': 'Bed 104', 'status': 'Maintenance'},
-      {'id': 'B-105', 'ward': 'General Ward (Male)', 'number': 'Bed 105', 'status': 'Available'},
-      {'id': 'B-106', 'ward': 'General Ward (Male)', 'number': 'Bed 106', 'status': 'Occupied', 'patient': 'Kamal Hossain', 'healthId': 'NUD-987-654-B2', 'doctor': 'Dr. Fatima', 'days': 1},
-      
-      {'id': 'B-201', 'ward': 'General Ward (Female)', 'number': 'Bed 201', 'status': 'Occupied', 'patient': 'Jahanara Begum', 'healthId': 'NUD-123-456-A1', 'doctor': 'Dr. Fatima', 'days': 2},
-      {'id': 'B-202', 'ward': 'General Ward (Female)', 'number': 'Bed 202', 'status': 'Available'},
-      {'id': 'B-203', 'ward': 'General Ward (Female)', 'number': 'Bed 203', 'status': 'Available'},
-      {'id': 'B-204', 'ward': 'General Ward (Female)', 'number': 'Bed 204', 'status': 'Available'},
-      
-      {'id': 'B-301', 'ward': 'ICU', 'number': 'Bed 301', 'status': 'Occupied', 'patient': 'Hasan Ali', 'healthId': 'NUD-444-555-C3', 'doctor': 'Trauma Lead', 'days': 5},
-      {'id': 'B-302', 'ward': 'ICU', 'number': 'Bed 302', 'status': 'Available'},
-    ];
-  }
-
   void _admitPatient(String bedId, String patientName, String healthId, String doctor) {
-    final idx = _beds.indexWhere((b) => b['id'] == bedId);
-    if (idx != -1) {
-      setState(() {
-        _beds[idx]['status'] = 'Occupied';
-        _beds[idx]['patient'] = patientName;
-        _beds[idx]['healthId'] = healthId;
-        _beds[idx]['doctor'] = doctor;
-        _beds[idx]['days'] = 0;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Patient $patientName admitted to ${_beds[idx]['number']} successfully.'),
-          backgroundColor: AppColors.success,
-        ),
-      );
-    }
+    ref.read(bedCapacityProvider.notifier).admitPatient(bedId, patientName, healthId, doctor);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Patient $patientName admitted successfully.'),
+        backgroundColor: AppColors.success,
+      ),
+    );
   }
 
-  void _dischargePatient(String bedId) {
-    final idx = _beds.indexWhere((b) => b['id'] == bedId);
-    if (idx != -1) {
-      final bed = _beds[idx];
-      showDialog(
-        context: context,
-        builder: (context) {
-          final diagCont = TextEditingController();
-          final summaryCont = TextEditingController();
-          return AlertDialog(
-            title: Text('Discharge Patient (${bed['patient']})', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: diagCont,
-                  decoration: const InputDecoration(labelText: 'Final Diagnosis', hintText: 'e.g., Acute Myocardial Infarction'),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: summaryCont,
-                  maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Discharge Summary Notes', hintText: 'Patient is stable. Prescribed meds...'),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _beds[idx]['status'] = 'Available';
-                    _beds[idx].remove('patient');
-                    _beds[idx].remove('healthId');
-                    _beds[idx].remove('doctor');
-                    _beds[idx].remove('days');
-                  });
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Patient discharged. ${bed['number']} is now available.'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                },
-                child: const Text('Confirm Discharge'),
+  void _dischargePatient(String bedId, String patientName, String bedNumber) {
+    final diagCont = TextEditingController();
+    final summaryCont = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Discharge Patient ($patientName)', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: diagCont,
+                decoration: const InputDecoration(labelText: 'Final Diagnosis', hintText: 'e.g., Acute Myocardial Infarction'),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: summaryCont,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'Discharge Summary Notes', hintText: 'Patient is stable. Prescribed meds...'),
               ),
             ],
-          );
-        },
-      );
-    }
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () {
+                ref.read(bedCapacityProvider.notifier).dischargePatient(bedId);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Patient discharged. $bedNumber is now available.'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              },
+              child: const Text('Confirm Discharge'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
-  void _showAdmitDialog(String bedId) {
-    final idx = _beds.indexWhere((b) => b['id'] == bedId);
-    if (idx == -1) return;
-    final bed = _beds[idx];
-
+  void _showAdmitDialog(BedAllocation bed) {
     final nameCont = TextEditingController();
     final idCont = TextEditingController();
     String doctor = 'Dr. Ahmed Khan';
@@ -124,7 +81,7 @@ class _BedManagementPageState extends State<BedManagementPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: Text('Admit to ${bed['number']} (${bed['ward']})', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+              title: Text('Admit to ${bed.number} (${bed.ward})', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -153,7 +110,7 @@ class _BedManagementPageState extends State<BedManagementPage> {
                 ElevatedButton(
                   onPressed: () {
                     if (nameCont.text.isNotEmpty && idCont.text.isNotEmpty) {
-                      _admitPatient(bedId, nameCont.text, idCont.text, doctor);
+                      _admitPatient(bed.id, nameCont.text, idCont.text, doctor);
                       Navigator.pop(context);
                     }
                   },
@@ -169,7 +126,8 @@ class _BedManagementPageState extends State<BedManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final activeAdmissions = _beds.where((b) => b['status'] == 'Occupied').toList();
+    final bedsList = ref.watch(bedCapacityProvider);
+    final activeAdmissions = bedsList.where((b) => b.status == 'Occupied').toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -262,7 +220,8 @@ class _BedManagementPageState extends State<BedManagementPage> {
   }
 
   Widget _buildBedMatrix() {
-    final filteredBeds = _beds.where((b) => b['ward'] == _selectedWard).toList();
+    final bedsList = ref.watch(bedCapacityProvider);
+    final filteredBeds = bedsList.where((b) => b.ward == _selectedWard).toList();
 
     return GridView.builder(
       shrinkWrap: true,
@@ -276,7 +235,7 @@ class _BedManagementPageState extends State<BedManagementPage> {
       itemCount: filteredBeds.length,
       itemBuilder: (context, index) {
         final bed = filteredBeds[index];
-        final status = bed['status'];
+        final status = bed.status;
         Color statusColor = AppColors.success;
         Color bg = AppColors.successLight;
         IconData icon = Icons.check_circle_outline_rounded;
@@ -294,9 +253,9 @@ class _BedManagementPageState extends State<BedManagementPage> {
         return InkWell(
           onTap: () {
             if (status == 'Available') {
-              _showAdmitDialog(bed['id']);
+              _showAdmitDialog(bed);
             } else if (status == 'Occupied') {
-              _dischargePatient(bed['id']);
+              _dischargePatient(bed.id, bed.patient ?? 'Unknown', bed.number);
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Bed is currently undergoing sanitary maintenance.')),
@@ -317,12 +276,12 @@ class _BedManagementPageState extends State<BedManagementPage> {
                 Icon(icon, color: statusColor, size: 28),
                 const SizedBox(height: 8),
                 Text(
-                  bed['number'],
+                  bed.number,
                   style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  status == 'Occupied' ? bed['patient'] : status,
+                  status == 'Occupied' ? (bed.patient ?? 'Occupied') : status,
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -340,7 +299,7 @@ class _BedManagementPageState extends State<BedManagementPage> {
     );
   }
 
-  Widget _buildAdmissionCard(Map<String, dynamic> bed) {
+  Widget _buildAdmissionCard(BedAllocation bed) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -355,26 +314,26 @@ class _BedManagementPageState extends State<BedManagementPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                bed['number'],
+                bed.number,
                 style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: AppColors.primary),
               ),
               Text(
-                '${bed['days']} days admitted',
+                '${bed.days ?? 0} days admitted',
                 style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            bed['patient'],
+            bed.patient ?? 'Unknown Patient',
             style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
           ),
           Text(
-            'Health ID: ${bed['healthId']}',
+            'Health ID: ${bed.healthId ?? 'N/A'}',
             style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
           ),
           Text(
-            'Doctor: ${bed['doctor']}',
+            'Doctor: ${bed.doctor ?? 'Unassigned'}',
             style: GoogleFonts.inter(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
@@ -383,7 +342,7 @@ class _BedManagementPageState extends State<BedManagementPage> {
           Align(
             alignment: Alignment.centerRight,
             child: OutlinedButton(
-              onPressed: () => _dischargePatient(bed['id']),
+              onPressed: () => _dischargePatient(bed.id, bed.patient ?? 'Unknown', bed.number),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.danger,
                 side: const BorderSide(color: AppColors.danger),

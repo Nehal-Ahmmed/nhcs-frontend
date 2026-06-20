@@ -10,6 +10,7 @@ import '../../features/auth/pages/login_page.dart';
 import '../../features/patient/pages/patient_shell.dart';
 import '../../features/doctor/pages/doctor_shell.dart';
 import '../../features/hospital/pages/hospital_shell.dart';
+import '../../features/government/pages/govt_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -30,9 +31,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) {
-          final role = state.uri.queryParameters['role'];
-          // Passing role logic if needed, but LoginPage usually handles it
-          return const LoginPage();
+          final role = state.uri.queryParameters['role'] ?? 'patient';
+          return LoginPage(role: role);
         },
       ),
       GoRoute(
@@ -46,6 +46,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/authority',
         builder: (context, state) => const HospitalShell(),
+      ),
+      GoRoute(
+        path: '/government',
+        builder: (context, state) => const GovtShell(),
       ),
     ],
   );

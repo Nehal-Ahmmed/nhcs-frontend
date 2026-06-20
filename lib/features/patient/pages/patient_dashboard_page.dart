@@ -1,51 +1,99 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/ai_insight_panel.dart';
+import '../../../core/widgets/notification_dropdown.dart';
+import '../../../core/providers/notifications_provider.dart';
+import '../data/models/appointment.dart';
+import '../data/models/dashboard_summary.dart';
+import '../data/models/medical_record.dart';
+import '../data/models/patient_profile.dart';
+import '../presentation/providers/patient_providers.dart';
 
-class PatientDashboardPage extends StatelessWidget {
+class PatientDashboardPage extends ConsumerWidget {
   const PatientDashboardPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Main content
-        Expanded(
-          child: Container(
-            color: AppColors.background,
-            child: Column(
-              children: [
-                _buildHeader(context),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHealthCard(),
-                        const SizedBox(height: 24),
-                        _buildAISummary(),
-                        const SizedBox(height: 24),
-                        Text('Quick Services', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 16),
-                        _buildQuickActions(),
-                        const SizedBox(height: 24),
-                        _buildSectionRow(),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileState = ref.watch(patientProfileProvider);
+    final aiSummaryState = ref.watch(patientAiHealthSummaryProvider);
+    final appointmentsState = ref.watch(patientAppointmentsProvider);
+    final prescriptionsState = ref.watch(patientPrescriptionsProvider);
+    final labReportsState = ref.watch(patientLabReportsProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: profileState.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (err, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 48),
+              const SizedBox(height: 16),
+              Text('Error loading dashboard: $err', style: GoogleFonts.inter(color: AppColors.textPrimary)),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () {
+                  ref.invalidate(patientProfileProvider);
+                  ref.invalidate(patientDashboardSummaryProvider);
+                  ref.invalidate(patientAiHealthSummaryProvider);
+                  ref.invalidate(patientAppointmentsProvider);
+                  ref.invalidate(patientPrescriptionsProvider);
+                  ref.invalidate(patientLabReportsProvider);
+                },
+                child: const Text('Retry'),
+              ),
+            ],
           ),
         ),
-        // Right panel
-        _buildRightPanel(context),
-      ],
+        data: (profile) {
+          return Row(
+            children: [
+              // Main content
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildHeader(context, ref),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildHealthCard(profile),
+                            const SizedBox(height: 24),
+                            aiSummaryState.when(
+                              loading: () => const LinearProgressIndicator(color: AppColors.warning),
+                              error: (e, s) => const SizedBox.shrink(),
+                              data: (aiSummary) => _buildAISummary(aiSummary),
+                            ),
+                            const SizedBox(height: 24),
+                            Text('Quick Services', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600)),
+                            const SizedBox(height: 16),
+                            _buildQuickActions(),
+                            const SizedBox(height: 24),
+                            _buildSectionRow(prescriptionsState, appointmentsState),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Right panel
+              _buildRightPanel(profile, labReportsState),
+            ],
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref) {
+    final notifications = ref.watch(patientNotificationsProvider);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
@@ -84,7 +132,14 @@ class PatientDashboardPage extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          _headerIcon(Icons.notifications_none_rounded, badge: '3'),
+          NotificationDropdown(
+            notifications: notifications,
+            onMarkRead: (id) => ref.read(patientNotificationsProvider.notifier).markAsRead(id),
+            onMarkAllRead: () => ref.read(patientNotificationsProvider.notifier).markAllAsRead(),
+            onNavigate: (tabIndex) {
+              ref.read(patientNavigationProvider.notifier).state = tabIndex;
+            },
+          ),
           const SizedBox(width: 8),
           _headerIcon(Icons.settings_outlined),
         ],
@@ -114,7 +169,15 @@ class PatientDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildHealthCard() {
+  Widget _buildHealthCard(PatientProfile profile) {
+    final age = DateTime.now().year - profile.dateOfBirth.year;
+    final allergiesStr = profile.allergies.isEmpty 
+        ? 'None' 
+        : profile.allergies.map((e) => e.allergen).join(', ');
+    final chronicStr = profile.chronicDiseases.isEmpty 
+        ? 'None' 
+        : profile.chronicDiseases.map((e) => e.diseaseName).join(', ');
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -160,9 +223,9 @@ class PatientDashboardPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Rahim Islam', style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                    Text(profile.name, style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
-                    Text('NUD-892-441-X7', style: GoogleFonts.inter(color: Colors.white60, fontSize: 14, letterSpacing: 1.5, fontWeight: FontWeight.w500)),
+                    Text(profile.healthId, style: GoogleFonts.inter(color: Colors.white60, fontSize: 14, letterSpacing: 1.5, fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
@@ -178,13 +241,13 @@ class PatientDashboardPage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _cardStat('Blood Group', 'O+'),
+                _cardStat('Blood Group', profile.bloodGroup),
                 _cardStatDivider(),
-                _cardStat('Age', '42'),
+                _cardStat('Age', age.toString()),
                 _cardStatDivider(),
-                _cardStat('Allergies', 'Penicillin'),
+                _cardStat('Allergies', allergiesStr),
                 _cardStatDivider(),
-                _cardStat('Chronic', 'Diabetes, HTN'),
+                _cardStat('Chronic', chronicStr),
               ],
             ),
           ),
@@ -194,12 +257,19 @@ class PatientDashboardPage extends StatelessWidget {
   }
 
   Widget _cardStat(String label, String value) {
-    return Column(
-      children: [
-        Text(label, style: GoogleFonts.inter(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 4),
-        Text(value, style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-      ],
+    return Expanded(
+      child: Column(
+        children: [
+          Text(label, style: GoogleFonts.inter(color: Colors.white54, fontSize: 11, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
   }
 
@@ -207,42 +277,16 @@ class PatientDashboardPage extends StatelessWidget {
     return Container(width: 1, height: 30, color: Colors.white.withOpacity(0.15));
   }
 
-  Widget _buildAISummary() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.warningLight, AppColors.warningLight.withOpacity(0.3)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.warning.withOpacity(0.3)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: AppColors.warning.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
-            child: const Icon(Icons.auto_awesome_rounded, color: AppColors.warning, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('AI Health Summary', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.orange.shade900)),
-                const SizedBox(height: 4),
-                Text(
-                  'You have a history of hypertension and diabetes. Your last visit was 20 days ago. One pending follow-up is recommended.',
-                  style: GoogleFonts.inter(fontSize: 13, color: AppColors.textSecondary, height: 1.5),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+  Widget _buildAISummary(AiHealthSummary summary) {
+    return AiInsightPanel(
+      title: 'AI Health Assessment & Vitals Briefing',
+      description: summary.summaryText,
+      type: 'warning',
+      recommendations: const [
+        'Vitals are stable, keep monitoring BP daily.',
+        'Take prescribed Metformin 500mg as instructed by Dr. Ahmed Khan.',
+        'Avoid high sodium meals and keep well hydrated.'
+      ],
     );
   }
 
@@ -284,7 +328,10 @@ class PatientDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionRow() {
+  Widget _buildSectionRow(
+    AsyncValue<List<Prescription>> prescriptionsState,
+    AsyncValue<List<Appointment>> appointmentsState,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -295,11 +342,30 @@ class PatientDashboardPage extends StatelessWidget {
             children: [
               Text('Active Prescriptions', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 16),
-              _prescriptionCard('Metformin 500mg', '1 tablet twice daily after meals', 'Dr. Ahmed', Colors.teal),
-              const SizedBox(height: 12),
-              _prescriptionCard('Amlodipine 5mg', '1 tablet in the morning', 'Dr. Ahmed', Colors.blue),
-              const SizedBox(height: 12),
-              _prescriptionCard('Aspirin 75mg', '1 tablet daily after lunch', 'Dr. Karim', Colors.orange),
+              prescriptionsState.when(
+                loading: () => const Center(child: CircularProgressIndicator(color: Colors.teal)),
+                error: (err, stack) => Text('Error loading prescriptions: $err'),
+                data: (prescriptions) {
+                  if (prescriptions.isEmpty) {
+                    return Text('No active prescriptions', style: GoogleFonts.inter(color: AppColors.textMuted));
+                  }
+                  // Let's show up to 3 medications from prescriptions
+                  final activeMeds = prescriptions.expand((p) => p.medicines).take(3).toList();
+                  if (activeMeds.isEmpty) {
+                    return Text('No active medications', style: GoogleFonts.inter(color: AppColors.textMuted));
+                  }
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: activeMeds.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final med = activeMeds[index];
+                      return _prescriptionCard(med.name, med.instruction, med.duration, Colors.teal);
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -311,9 +377,28 @@ class PatientDashboardPage extends StatelessWidget {
             children: [
               Text('Upcoming Appointments', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
               const SizedBox(height: 16),
-              _appointmentCard('Dr. Ahmed', 'Cardiology', 'Tomorrow, 10:30 AM', 'Dhaka Central Hospital'),
-              const SizedBox(height: 12),
-              _appointmentCard('Dr. Fatima', 'Endocrinology', 'Jun 22, 2:00 PM', 'National Medical Center'),
+              appointmentsState.when(
+                loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                error: (err, stack) => Text('Error loading appointments: $err'),
+                data: (appointments) {
+                  final upcoming = appointments.where((a) => a.status == 'Upcoming').toList();
+                  if (upcoming.isEmpty) {
+                    return Text('No upcoming appointments', style: GoogleFonts.inter(color: AppColors.textMuted));
+                  }
+                  return ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: upcoming.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final app = upcoming[index];
+                      // format date
+                      final dateStr = "${app.date.day}/${app.date.month}/${app.date.year}";
+                      return _appointmentCard(app.doctor.name, app.doctor.specialization, "$dateStr, ${app.timeSlot}", app.hospital);
+                    },
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -321,7 +406,7 @@ class PatientDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _prescriptionCard(String medicine, String instruction, String doctor, Color color) {
+  Widget _prescriptionCard(String medicine, String instruction, String duration, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -345,7 +430,7 @@ class PatientDashboardPage extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(instruction, style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12)),
                 const SizedBox(height: 2),
-                Text(doctor, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11)),
+                Text('Duration: $duration', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11)),
               ],
             ),
           ),
@@ -399,7 +484,7 @@ class PatientDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildRightPanel(BuildContext context) {
+  Widget _buildRightPanel(PatientProfile profile, AsyncValue<List<LabReport>> labReportsState) {
     return Container(
       width: 300,
       color: AppColors.surface,
@@ -426,8 +511,8 @@ class PatientDashboardPage extends StatelessWidget {
                     child: const Icon(Icons.person_rounded, color: Colors.white, size: 40),
                   ),
                   const SizedBox(height: 12),
-                  Text('Rahim Islam', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
-                  Text('NUD-892-441-X7', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+                  Text(profile.name, style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
+                  Text(profile.healthId, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
                 ],
               ),
             ),
@@ -435,20 +520,36 @@ class PatientDashboardPage extends StatelessWidget {
             // Vitals
             Text('Health Vitals', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
-            _vitalCard('Blood Pressure', '130/85 mmHg', Icons.favorite_rounded, AppColors.danger),
+            _vitalCard('Blood Pressure', '${profile.vitals.bpSystolic}/${profile.vitals.bpDiastolic} mmHg', Icons.favorite_rounded, AppColors.danger),
             const SizedBox(height: 8),
-            _vitalCard('Blood Glucose', '180 mg/dL', Icons.bloodtype_rounded, AppColors.warning),
+            _vitalCard('Blood Glucose', '${profile.vitals.bloodGlucose} mg/dL', Icons.bloodtype_rounded, AppColors.warning),
             const SizedBox(height: 8),
-            _vitalCard('Heart Rate', '78 bpm', Icons.monitor_heart_rounded, AppColors.success),
+            _vitalCard('Heart Rate', '${profile.vitals.heartRate} bpm', Icons.monitor_heart_rounded, AppColors.success),
             const SizedBox(height: 8),
-            _vitalCard('Weight', '75 kg', Icons.scale_rounded, AppColors.info),
+            _vitalCard('Weight', '${profile.vitals.weight} kg', Icons.scale_rounded, AppColors.info),
             const SizedBox(height: 24),
             // Recent reports
             Text('Recent Test Reports', style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 12),
-            _reportItem('Complete Blood Count', 'Jun 10, 2026', 'Published'),
-            _reportItem('Lipid Profile', 'Jun 8, 2026', 'Published'),
-            _reportItem('ECG', 'Jun 5, 2026', 'Published'),
+            labReportsState.when(
+              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+              error: (err, stack) => Text('Error loading reports'),
+              data: (reports) {
+                if (reports.isEmpty) {
+                  return Text('No test reports yet', style: GoogleFonts.inter(color: AppColors.textMuted));
+                }
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: reports.length,
+                  itemBuilder: (context, index) {
+                    final report = reports[index];
+                    final dateStr = "${report.date.day}/${report.date.month}/${report.date.year}";
+                    return _reportItem(report.testName, dateStr, report.status);
+                  },
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -489,7 +590,7 @@ class PatientDashboardPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(name, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500), overflow: TextOverflow.ellipsis),
                 Text(date, style: GoogleFonts.inter(fontSize: 11, color: AppColors.textMuted)),
               ],
             ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 
@@ -88,7 +89,7 @@ class LandingPage extends StatelessWidget {
 
           // Action Button
           ElevatedButton(
-            onPressed: () => Navigator.pushNamed(context, '/role'),
+            onPressed: () => context.go('/role'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               foregroundColor: Colors.white,
@@ -161,7 +162,7 @@ class LandingPage extends StatelessWidget {
               isDesktop ? MainAxisAlignment.start : MainAxisAlignment.center,
           children: [
             ElevatedButton(
-              onPressed: () => Navigator.pushNamed(context, '/role'),
+              onPressed: () => context.go('/role'),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
@@ -568,7 +569,7 @@ class LandingPage extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           ElevatedButton(
-            onPressed: () => Navigator.pushNamed(context, '/role'),
+            onPressed: () => context.go('/role'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
               foregroundColor: AppColors.primary,

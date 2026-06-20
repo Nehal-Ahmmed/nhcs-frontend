@@ -1,121 +1,65 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../patient/data/datasources/patient_mock_datasource.dart';
+import '../data/models/reception_queue_item.dart';
+import '../presentation/providers/hospital_providers.dart';
 
-class ReceptionQueuePage extends StatefulWidget {
+class ReceptionQueuePage extends ConsumerStatefulWidget {
   const ReceptionQueuePage({super.key});
 
   @override
-  State<ReceptionQueuePage> createState() => _ReceptionQueuePageState();
+  ConsumerState<ReceptionQueuePage> createState() => _ReceptionQueuePageState();
 }
 
-class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
+class _ReceptionQueuePageState extends ConsumerState<ReceptionQueuePage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedDept = 'Emergency';
-  
-  // Hardcoded patient lookup database for simulation
-  final Map<String, Map<String, String>> _mockPatientsDb = {
-    'NUD-892-441-X7': {
-      'name': 'Rahim Islam',
-      'id': 'NUD-892-441-X7',
-      'nid': '1984261523412',
-      'age': '42',
-      'gender': 'Male',
-      'blood': 'O+',
-      'specialty': 'Cardiology',
-      'doctor': 'Dr. Ahmed',
-    },
-    'NUD-123-456-A1': {
-      'name': 'Jahanara Begum',
-      'id': 'NUD-123-456-A1',
-      'nid': '1992261543210',
-      'age': '31',
-      'gender': 'Female',
-      'blood': 'A-',
-      'specialty': 'Emergency',
-      'doctor': 'On-Duty Trauma Team',
-    },
-    'NUD-987-654-B2': {
-      'name': 'Kamal Hossain',
-      'id': 'NUD-987-654-B2',
-      'nid': '1975261598765',
-      'age': '50',
-      'gender': 'Male',
-      'blood': 'B+',
-      'specialty': 'Pediatrics',
-      'doctor': 'Dr. Fatima',
-    }
-  };
 
   Map<String, String>? _searchedPatient;
   bool _searchPerformed = false;
 
-  // Active queues in memory for simulation
-  List<Map<String, dynamic>> _queueList = [
-    {
-      'queueNo': 'EM-04',
-      'name': 'Hasan Ali',
-      'age': '52',
-      'gender': 'M',
-      'dept': 'Emergency',
-      'doctor': 'Trauma Lead',
-      'status': 'In Consultation',
-    },
-    {
-      'queueNo': 'EM-05',
-      'name': 'Fatema Zohra',
-      'age': '24',
-      'gender': 'F',
-      'dept': 'Emergency',
-      'doctor': 'Dr. Subrata',
-      'status': 'Waiting',
-    },
-    {
-      'queueNo': 'EM-06',
-      'name': 'Adnan Sami',
-      'age': '35',
-      'gender': 'M',
-      'dept': 'Emergency',
-      'doctor': 'Dr. Subrata',
-      'status': 'Waiting',
-    },
-    {
-      'queueNo': 'CD-01',
-      'name': 'Abdul Karim',
-      'age': '62',
-      'gender': 'M',
-      'dept': 'Cardiology',
-      'doctor': 'Dr. Ahmed',
-      'status': 'In Consultation',
-    },
-    {
-      'queueNo': 'CD-02',
-      'name': 'Shahnaz Parveen',
-      'age': '45',
-      'gender': 'F',
-      'dept': 'Cardiology',
-      'doctor': 'Dr. Ahmed',
-      'status': 'Waiting',
-    },
-    {
-      'queueNo': 'PD-01',
-      'name': 'Tahsan Karim',
-      'age': '6',
-      'gender': 'M',
-      'dept': 'Pediatrics',
-      'doctor': 'Dr. Fatima',
-      'status': 'Waiting',
-    }
-  ];
-
   void _searchPatient() {
     final query = _searchController.text.trim();
+    final patientDb = PatientMockDatasource();
+    
     setState(() {
       _searchPerformed = true;
-      if (_mockPatientsDb.containsKey(query)) {
-        _searchedPatient = _mockPatientsDb[query];
+      if (query == patientDb.profile.healthId) {
+        _searchedPatient = {
+          'name': patientDb.profile.name,
+          'id': patientDb.profile.healthId,
+          'nid': patientDb.profile.nationalId,
+          'age': (DateTime.now().year - patientDb.profile.dateOfBirth.year).toString(),
+          'gender': patientDb.profile.gender,
+          'blood': patientDb.profile.bloodGroup,
+          'specialty': 'Cardiology',
+          'doctor': 'Dr. Ahmed Khan',
+        };
+      } else if (query == 'NUD-123-456-A1') {
+        _searchedPatient = {
+          'name': 'Jahanara Begum',
+          'id': 'NUD-123-456-A1',
+          'nid': '1992261543210',
+          'age': '31',
+          'gender': 'Female',
+          'blood': 'A-',
+          'specialty': 'Emergency',
+          'doctor': 'On-Duty Trauma Team',
+        };
+      } else if (query == 'NUD-987-654-B2') {
+        _searchedPatient = {
+          'name': 'Kamal Hossain',
+          'id': 'NUD-987-654-B2',
+          'nid': '1975261598765',
+          'age': '50',
+          'gender': 'Male',
+          'blood': 'B+',
+          'specialty': 'Pediatrics',
+          'doctor': 'Dr. Fatima',
+        };
       } else {
-        // Fallback or custom generation
         _searchedPatient = null;
       }
     });
@@ -123,21 +67,23 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
 
   void _checkInPatient() {
     if (_searchedPatient != null) {
+      final name = _searchedPatient!['name']!;
+      final age = _searchedPatient!['age']!;
+      final gender = _searchedPatient!['gender']?[0] ?? 'M';
+      final healthId = _searchedPatient!['id']!;
       final dept = _searchedPatient!['specialty'] ?? 'Emergency';
-      final String prefix = dept == 'Emergency' ? 'EM' : (dept == 'Cardiology' ? 'CD' : 'PD');
-      final int nextNo = _queueList.where((p) => p['dept'] == dept).length + 1;
-      
+      final doctor = _searchedPatient!['doctor'] ?? 'Unassigned';
+
+      ref.read(receptionQueueProvider.notifier).checkInPatient(
+        name: name,
+        age: age,
+        gender: gender,
+        healthId: healthId,
+        dept: dept,
+        doctor: doctor,
+      );
+
       setState(() {
-        _queueList.add({
-          'queueNo': '$prefix-${nextNo.toString().padLeft(2, '0')}',
-          'name': _searchedPatient!['name'],
-          'age': _searchedPatient!['age'],
-          'gender': _searchedPatient!['gender']?[0] ?? 'M',
-          'dept': dept,
-          'doctor': _searchedPatient!['doctor'] ?? 'Unassigned',
-          'status': 'Waiting',
-        });
-        // Clear search
         _searchedPatient = null;
         _searchPerformed = false;
         _searchController.clear();
@@ -152,23 +98,21 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
     }
   }
 
-  void _updateStatus(int index, String newStatus) {
-    setState(() {
-      _queueList[index]['status'] = newStatus;
-    });
+  void _updateStatus(String queueNo, String newStatus) {
+    ref.read(receptionQueueProvider.notifier).updateStatus(queueNo, newStatus);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Filter queue by active department selection
-    final filteredQueue = _queueList.where((p) => p['dept'] == _selectedDept).toList();
+    final queueList = ref.watch(receptionQueueProvider);
+    final filteredQueue = queueList.where((p) => p.dept == _selectedDept).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left Side: Front Desk Check-In Desk
+          // Left Side: Front Check-In Desk
           Expanded(
             flex: 2,
             child: SingleChildScrollView(
@@ -214,9 +158,7 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
                           separatorBuilder: (context, index) => const SizedBox(height: 12),
                           itemBuilder: (context, index) {
                             final patient = filteredQueue[index];
-                            // Find real index in parent list for update operations
-                            final realIndex = _queueList.indexWhere((p) => p['queueNo'] == patient['queueNo']);
-                            return _buildQueueCard(patient, realIndex);
+                            return _buildQueueCard(patient);
                           },
                         ),
                 ),
@@ -486,8 +428,8 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
     );
   }
 
-  Widget _buildQueueCard(Map<String, dynamic> patient, int realIndex) {
-    final status = patient['status'];
+  Widget _buildQueueCard(ReceptionQueueItem patient) {
+    final status = patient.status;
     Color statusColor;
     Color statusBg;
 
@@ -525,7 +467,7 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
             ),
             alignment: Alignment.center,
             child: Text(
-              patient['queueNo'],
+              patient.queueNo,
               style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
             ),
           ),
@@ -538,7 +480,7 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
                 Row(
                   children: [
                     Text(
-                      patient['name'],
+                      patient.name,
                       style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 14),
                     ),
                     const SizedBox(width: 8),
@@ -557,7 +499,7 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${patient['age']}Y • ${patient['gender']} • Assigned: ${patient['doctor']}',
+                  '${patient.age}Y • ${patient.gender} • Assigned: ${patient.doctor}',
                   style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12),
                 ),
               ],
@@ -570,7 +512,7 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
                 IconButton(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Paging patient ${patient['name']}...')),
+                      SnackBar(content: Text('Paging patient ${patient.name}...')),
                     );
                   },
                   icon: const Icon(Icons.volume_up_rounded, color: AppColors.primary),
@@ -578,7 +520,7 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton(
-                  onPressed: () => _updateStatus(realIndex, 'In Consultation'),
+                  onPressed: () => _updateStatus(patient.queueNo, 'In Consultation'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -588,7 +530,7 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
               ],
               if (status == 'In Consultation') ...[
                 ElevatedButton(
-                  onPressed: () => _updateStatus(realIndex, 'Completed'),
+                  onPressed: () => _updateStatus(patient.queueNo, 'Completed'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.success,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -605,6 +547,11 @@ class _ReceptionQueuePageState extends State<ReceptionQueuePage> {
         ],
       ),
     );
+  }
+
+  Widget _buildQueueCardLegacy(Map<String, dynamic> patient, int realIndex) {
+    // Legacy support if needed, but not used now
+    return const SizedBox();
   }
 
   Widget _buildEmptyQueue() {

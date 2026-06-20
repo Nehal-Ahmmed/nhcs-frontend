@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
 
@@ -49,6 +50,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       title = 'Hospital Authority Login';
       icon = Icons.local_hospital_rounded;
       gradient = [const Color(0xFF7C3AED), const Color(0xFF6366F1)];
+    } else if (widget.role == 'govt') {
+      title = 'Government Authority Login';
+      icon = Icons.account_balance_rounded;
+      gradient = [const Color(0xFFDC2626), const Color(0xFFF97316)];
     }
 
     return Scaffold(
@@ -72,7 +77,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   alignment: Alignment.centerLeft,
                   child: InkWell(
                     // Uses router to pop
-                    onTap: () => Navigator.of(context).pop(),
+                    onTap: () => context.pop(),
                     borderRadius: BorderRadius.circular(8),
                     child: Container(
                       padding: const EdgeInsets.all(8),
