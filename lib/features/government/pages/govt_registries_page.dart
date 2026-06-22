@@ -117,53 +117,72 @@ class _GovtRegistriesPageState extends ConsumerState<GovtRegistriesPage> with Si
           Expanded(
             child: Align(
               alignment: Alignment.centerRight,
-              child: SizedBox(
-                width: 320,
-                height: 40,
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (val) {
-                    setState(() {
-                      _searchQuery = val.trim().toLowerCase();
-                    });
-                  },
-                  style: GoogleFonts.inter(fontSize: 13),
-                  decoration: InputDecoration(
-                    hintText: _tabController.index == 0
-                        ? 'Search citizens by Name or Health ID...'
-                        : (_tabController.index == 1
-                            ? 'Search doctors by Name, Spec or License...'
-                            : 'Search hospitals by Name or Facility ID...'),
-                    hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 13),
-                    prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textMuted),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                _searchController.clear();
-                                _searchQuery = '';
-                              });
-                            },
-                            child: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textMuted),
-                          )
-                        : null,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: AppColors.divider.withOpacity(0.5)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_tabController.index == 2) ...[
+                    ElevatedButton.icon(
+                      onPressed: () => _showAddHospitalDialog(context, ref),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: Text('Add Hospital', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide(color: AppColors.divider.withOpacity(0.5)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.primary),
+                    const SizedBox(width: 16),
+                  ],
+                  SizedBox(
+                    width: 320,
+                    height: 40,
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        setState(() {
+                          _searchQuery = val.trim().toLowerCase();
+                        });
+                      },
+                      style: GoogleFonts.inter(fontSize: 13),
+                      decoration: InputDecoration(
+                        hintText: _tabController.index == 0
+                            ? 'Search citizens by Name or Health ID...'
+                            : (_tabController.index == 1
+                                ? 'Search doctors by Name, Spec or License...'
+                                : 'Search hospitals by Name or Facility ID...'),
+                        hintStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 13),
+                        prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textMuted),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                  });
+                                },
+                                child: const Icon(Icons.clear_rounded, size: 18, color: AppColors.textMuted),
+                              )
+                            : null,
+                        contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                        filled: true,
+                        fillColor: AppColors.background,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.divider.withOpacity(0.5)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: AppColors.divider.withOpacity(0.5)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppColors.primary),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),
@@ -526,6 +545,78 @@ class _GovtRegistriesPageState extends ConsumerState<GovtRegistriesPage> with Si
         text,
         style: GoogleFonts.inter(color: AppColors.textMuted, fontWeight: FontWeight.w600, fontSize: 12),
       ),
+    );
+  }
+
+  void _showAddHospitalDialog(BuildContext context, WidgetRef ref) {
+    final nameController = TextEditingController();
+    final divisionController = TextEditingController();
+    final classificationController = TextEditingController();
+    final totalBedsController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Add Hospital Entity', style: GoogleFonts.outfit(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Hospital Name'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: divisionController,
+                  decoration: const InputDecoration(labelText: 'Division'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: classificationController,
+                  decoration: const InputDecoration(labelText: 'Classification (e.g. Public, Private)'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: totalBedsController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Total Beds'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final hospital = HospitalProfile(
+                  facilityId: 'FAC-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+                  name: nameController.text.trim(),
+                  division: divisionController.text.trim(),
+                  classification: classificationController.text.trim(),
+                  totalBeds: int.tryParse(totalBedsController.text.trim()) ?? 0,
+                  occupiedBeds: 0,
+                  complianceScore: 100,
+                  status: 'Active',
+                );
+                ref.read(govtHospitalRegistryProvider.notifier).addHospital(hospital);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Hospital entity added successfully!'), backgroundColor: AppColors.success),
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
