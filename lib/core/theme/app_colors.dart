@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary
-  static const Color primary = Color(0xFF0F6292);
-  static const Color primaryDark = Color(0xFF0A4B75);
-  static const Color primaryLight = Color(0xFFE8F4FD);
+  // Primary (Premium Emerald Green)
+  static const Color primary = Color(0xFF10B981);
+  static const Color primaryDark = Color(0xFF047857);
+  static const Color primaryLight = Color(0xFFD1FAE5);
 
-  // Secondary
-  static const Color secondary = Color(0xFF0D9488);
-  static const Color secondaryLight = Color(0xFFE6F7F5);
+  // Secondary (Teal/Mint Green)
+  static const Color secondary = Color(0xFF34D399);
+  static const Color secondaryLight = Color(0xFFECFDF5);
 
-  // Accent
-  static const Color accent = Color(0xFF6366F1);
-  static const Color accentLight = Color(0xFFEEF2FF);
+  // Accent (Soft Green-Yellow or Blue-Green)
+  static const Color accent = Color(0xFF059669);
+  static const Color accentLight = Color(0xFFA7F3D0);
 
-  // Surfaces
+  // Surfaces (Deep Forest Green for Dark Mode / Sidebar)
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color background = Color(0xFFF8FAFB);
-  static const Color sidebar = Color(0xFF0C2444);
-  static const Color sidebarHover = Color(0xFF132F55);
+  static const Color background = Color(0xFFF0FDF4);
+  static const Color sidebar = Color(0xFF064E3B);
+  static const Color sidebarHover = Color(0xFF065F46);
 
   // Status
   static const Color success = Color(0xFF22C55E);

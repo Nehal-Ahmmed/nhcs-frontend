@@ -3,7 +3,7 @@ class AppConstants {
   static const String appVersion = '1.0.0';
 
   // Network
-  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://localhost:8080/api');
+  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://localhost:8080/api/v1');
   static const int connectTimeout = 15000;
   static const int receiveTimeout = 15000;
 

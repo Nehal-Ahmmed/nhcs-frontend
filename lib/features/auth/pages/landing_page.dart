@@ -1,55 +1,112 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/utils/constants.dart';
 
-class LandingPage extends StatelessWidget {
+class LandingPage extends ConsumerWidget {
   const LandingPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final size = MediaQuery.of(context).size;
     final isDesktop = size.width > 900;
 
     return Scaffold(
-      backgroundColor: AppColors.sidebar,
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Header / Navigation Bar
-            _buildNavBar(context, isDesktop),
-
-            // Hero Section
-            _buildHeroSection(context, isDesktop, size),
-
-            // Statistics Section
-            _buildStatsSection(context, isDesktop),
-
-            // Core Features Section
-            _buildFeaturesSection(context, isDesktop),
-
-            // Call to Action Section
-            _buildCTASection(context),
-
-            // Footer
-            _buildFooter(),
-          ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.primaryDark,
+              AppColors.primary,
+              AppColors.primaryDark,
+            ],
+          ),
         ),
+        child: Stack(
+          children: [
+            // Ambient subtle highlights instead of heavy blobs for a cleaner look
+            Positioned(
+              top: -100,
+              left: -100,
+              child: Container(
+                width: 400,
+                height: 400,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 300,
+              right: -150,
+              child: Container(
+                width: 500,
+                height: 500,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.05),
+                ),
+              ),
+            ),
+            // Blur layer to soften the circles
+            Positioned.fill(
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+          
+          // Main Content
+          Positioned.fill(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Header / Navigation Bar
+                  _buildNavBar(context, ref, isDesktop),
+
+                  // Hero Section
+                  _buildHeroSection(context, isDesktop, size),
+
+                  // Statistics Section
+                  _buildStatsSection(context, isDesktop),
+
+                  // Core Features Section
+                  _buildFeaturesSection(context, isDesktop),
+
+                  // Call to Action Section
+                  _buildCTASection(context),
+
+                  // Footer
+                  _buildFooter(),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildNavBar(BuildContext context, bool isDesktop) {
+  Widget _buildNavBar(BuildContext context, WidgetRef ref, bool isDesktop) {
+    final authState = ref.watch(authProvider);
+    final isAuthenticated = authState.isAuthenticated;
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: isDesktop ? 80 : 20,
         vertical: 20,
       ),
       decoration: BoxDecoration(
-        color: AppColors.sidebar.withOpacity(0.9),
+        color: Colors.white.withOpacity(0.05),
         border: Border(
           bottom: BorderSide(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withOpacity(0.1),
             width: 1,
           ),
         ),
@@ -87,20 +144,47 @@ class LandingPage extends StatelessWidget {
             ],
           ),
 
+          // Navigation Links
+          if (isDesktop)
+            Row(
+              children: [
+                _NavBarLink(title: 'Home', onTap: () => context.go('/')),
+                const SizedBox(width: 24),
+                _NavBarLink(title: 'About', onTap: () {}),
+                const SizedBox(width: 24),
+                _NavBarLink(title: 'Contact', onTap: () {}),
+                const SizedBox(width: 24),
+                _NavBarLink(title: 'Search Doctors', onTap: () {}),
+              ],
+            ),
+
           // Action Button
           ElevatedButton(
-            onPressed: () => context.go('/role'),
+            onPressed: () {
+              if (isAuthenticated) {
+                switch (authState.role) {
+                  case AppConstants.rolePatient: context.go('/user'); break;
+                  case AppConstants.roleDoctor: context.go('/doctor'); break;
+                  case AppConstants.roleHospital: context.go('/authority'); break;
+                  case AppConstants.roleGovt: context.go('/government'); break;
+                  default: context.go('/role');
+                }
+              } else {
+                context.go('/role');
+              }
+            },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
+              backgroundColor: Colors.white,
+              foregroundColor: AppColors.primaryDark,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              elevation: 0,
+              elevation: 4,
+              shadowColor: Colors.black.withOpacity(0.1),
             ),
             child: Text(
-              'Sign In / Register',
+              isAuthenticated ? 'Dashboard' : 'Sign In / Register',
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w600,
                 fontSize: 14,
@@ -224,21 +308,22 @@ class LandingPage extends StatelessWidget {
 
     final heroImage = Center(
       child: Container(
-        height: isDesktop ? 450 : 300,
+        height: isDesktop ? 450 : 350,
+        width: isDesktop ? double.infinity : 350,
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
+          color: Colors.white.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: Colors.white.withOpacity(0.08), width: 1.5),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 40,
-              offset: const Offset(0, 20),
+              color: AppColors.primary.withOpacity(0.15),
+              blurRadius: 60,
+              offset: const Offset(0, 30),
             ),
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(32),
           child: Stack(
             children: [
               Positioned.fill(
@@ -246,42 +331,133 @@ class LandingPage extends StatelessWidget {
                   painter: GridPainter(),
                 ),
               ),
-              Center(
+              Positioned(
+                top: 40,
+                right: -40,
+                child: Container(
+                  width: 200,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.secondary.withOpacity(0.1),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(32),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primary.withOpacity(0.1),
-                        border: Border.all(
-                          color: AppColors.primary.withOpacity(0.3),
-                          width: 2,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.monitor_heart_rounded, color: AppColors.primary, size: 24),
+                            ),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Live Analytics', style: GoogleFonts.outfit(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                                Text('National Network', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+                              ],
+                            ),
+                          ],
                         ),
-                      ),
-                      child: const Icon(
-                        Icons.health_and_safety_outlined,
-                        size: 80,
-                        color: AppColors.secondary,
-                      ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.success.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.success.withOpacity(0.5)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(width: 8, height: 8, decoration: const BoxDecoration(color: AppColors.success, shape: BoxShape.circle)),
+                              const SizedBox(width: 6),
+                              Text('System Secure', style: GoogleFonts.inter(color: AppColors.success, fontSize: 12, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'SECURED BY NUDHEB SHIELD',
-                      style: GoogleFonts.outfit(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Smart Hospital Network • Citizen Health Wallet • AI Disease Insights',
-                      style: GoogleFonts.inter(
-                        color: AppColors.textMuted,
-                        fontSize: 12,
+                    const SizedBox(height: 32),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.04),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.shield_rounded, color: AppColors.secondary.withOpacity(0.8), size: 64),
+                                  const SizedBox(height: 16),
+                                  Text('100% Encrypted', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  Text('NUDHEB Shield', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(colors: [AppColors.primary.withOpacity(0.8), AppColors.secondary.withOpacity(0.8)]),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text('4,200+', style: GoogleFonts.outfit(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
+                                        Text('Hospitals Connected', style: GoogleFonts.inter(color: Colors.white.withOpacity(0.8), fontSize: 14)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Expanded(
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.all(20),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.04),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(color: Colors.white.withOpacity(0.05)),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text('10M+', style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                                        Text('Citizen Records Secured', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -507,12 +683,16 @@ class LandingPage extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      feature.desc,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: AppColors.textMuted,
-                        height: 1.5,
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Text(
+                          feature.desc,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: AppColors.textMuted,
+                            height: 1.5,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -530,18 +710,11 @@ class LandingPage extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary.withOpacity(0.8),
-            AppColors.secondary.withOpacity(0.8),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 30,
             offset: const Offset(0, 10),
           ),
@@ -550,51 +723,45 @@ class LandingPage extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            'Ready to access NUDHEB portal?',
+            'Ready to Join the National Health Network?',
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(
               fontSize: 32,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: AppColors.primaryDark,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           Text(
-            'Select your role to sign in or register your account in the national network.',
+            'Create your digital health identity today or log in to your portal.',
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 16,
-              color: Colors.white.withOpacity(0.8),
+              color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 32),
           ElevatedButton(
             onPressed: () => context.go('/role'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 40,
+                vertical: 20,
               ),
-              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 4,
+              shadowColor: AppColors.primary.withOpacity(0.3),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Access Unified Portal',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 20,
-                ),
-              ],
+            child: Text(
+              'Access Portal',
+              style: GoogleFonts.inter(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ],
@@ -692,3 +859,30 @@ class GridPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+class _NavBarLink extends StatelessWidget {
+  final String title;
+  final VoidCallback onTap;
+
+  const _NavBarLink({required this.title, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(
+          title,
+          style: GoogleFonts.inter(
+            color: Colors.white.withOpacity(0.8),
+            fontWeight: FontWeight.w500,
+            fontSize: 15,
+          ),
+        ),
+      ),
+    );
+  }
+}
+

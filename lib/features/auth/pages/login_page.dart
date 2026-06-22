@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/dio_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   final String role;
@@ -14,25 +15,72 @@ class LoginPage extends ConsumerStatefulWidget {
 }
 
 class _LoginPageState extends ConsumerState<LoginPage> {
+  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-fill dummy credentials for easy testing
+    switch (widget.role) {
+      case 'doctor':
+        _usernameController.text = 'doctor';
+        _passwordController.text = 'password123';
+        break;
+      case 'authority':
+        _usernameController.text = 'hospital';
+        _passwordController.text = 'password123';
+        break;
+      case 'govt':
+        _usernameController.text = 'govt';
+        _passwordController.text = 'password123';
+        break;
+      case 'patient':
+      default:
+        _usernameController.text = 'patient';
+        _passwordController.text = 'password123';
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   void _handleLogin() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     
-    // Simulate network delay
-    await Future.delayed(const Duration(seconds: 1));
-    
-    // Map URL role to AppConstants role
-    String authRole = 'PATIENT';
-    if (widget.role == 'doctor') authRole = 'DOCTOR';
-    if (widget.role == 'authority') authRole = 'HOSPITAL';
-    if (widget.role == 'govt') authRole = 'GOVT';
+    try {
+      final dio = ref.read(dioProvider);
+      final response = await dio.post('/auth/login', data: {
+        'username': _usernameController.text.trim(),
+        'password': _passwordController.text,
+      });
 
-    // Update Auth State, which triggers GoRouter redirect automatically
-    await ref.read(authProvider.notifier).login('mock_jwt_token', 'mock_refresh_token', authRole);
-    
-    if (mounted) {
-      setState(() => _isLoading = false);
+      final token = response.data['token'];
+      final role = response.data['role'];
+
+      // Update Auth State, which triggers GoRouter redirect automatically
+      await ref.read(authProvider.notifier).login(token, '', role);
+      
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Invalid username or password.';
+        });
+      }
     }
   }
 
@@ -107,9 +155,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   'Enter your credentials to continue',
                   style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 14),
                 ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Text(_errorMessage!, style: GoogleFonts.inter(color: Colors.redAccent, fontSize: 14)),
+                ],
                 const SizedBox(height: 36),
                 // Email field
                 TextField(
+                  controller: _usernameController,
                   style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
                     labelText: 'Health ID / Email',
@@ -130,6 +183,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 const SizedBox(height: 16),
                 // Password field
                 TextField(
+                  controller: _passwordController,
                   obscureText: true,
                   style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(

@@ -28,10 +28,17 @@ class ErrorInterceptor extends Interceptor {
 
   void _handleBadResponse(Response? response) {
     final statusCode = response?.statusCode;
-    final message = response?.data?['message'] ?? 'Unknown error';
+    
+    String message = 'Unknown error';
+    if (response?.data is Map<String, dynamic>) {
+      message = response?.data['message'] ?? 'Unknown error';
+    } else if (response?.data is String) {
+      message = response?.data;
+    }
 
     if (statusCode == 400) {
-      throw ValidationException(message, details: response?.data?['errors']);
+      final details = response?.data is Map<String, dynamic> ? response?.data['errors'] : null;
+      throw ValidationException(message, details: details);
     } else if (statusCode == 401 || statusCode == 403) {
       throw AuthException(message);
     } else if (statusCode == 404) {
