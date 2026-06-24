@@ -3,36 +3,339 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
 
-class LandingPage extends StatelessWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/application_provider.dart';
+
+class LandingPage extends ConsumerStatefulWidget {
   const LandingPage({super.key});
+
+  @override
+  ConsumerState<LandingPage> createState() => _LandingPageState();
+}
+
+class _LandingPageState extends ConsumerState<LandingPage> {
+  int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final isDesktop = size.width > 900;
+    final isDesktop = size.width > 960;
 
     return Scaffold(
       backgroundColor: AppColors.sidebar,
-      body: SingleChildScrollView(
-        child: Column(
+      body: Column(
+        children: [
+          // Header / Top Navigation Bar
+          _buildNavBar(context, isDesktop),
+          
+          // Main Content Area with Navigation Rail
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Navigation Rail
+                NavigationRail(
+                  backgroundColor: AppColors.sidebar.withOpacity(0.95),
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (int index) {
+                    setState(() {
+                      _selectedIndex = index;
+                    });
+                  },
+                  labelType: NavigationRailLabelType.all,
+                  unselectedLabelTextStyle: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11),
+                  selectedLabelTextStyle: GoogleFonts.inter(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 11),
+                  unselectedIconTheme: const IconThemeData(color: AppColors.textMuted),
+                  selectedIconTheme: const IconThemeData(color: AppColors.primary),
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.dashboard_rounded),
+                      selectedIcon: Icon(Icons.dashboard_rounded),
+                      label: Text('Dashboard'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.medical_services_rounded),
+                      selectedIcon: Icon(Icons.medical_services_rounded),
+                      label: Text('Services'),
+                    ),
+                  ],
+                ),
+                
+                // Vertical Divider
+                VerticalDivider(thickness: 1, width: 1, color: Colors.white.withOpacity(0.05)),
+                
+                // Main Scrollable Portal Contents
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isDesktop ? 60 : 20,
+                        vertical: 32,
+                      ),
+                      child: _selectedIndex == 0 ? _buildDashboardContent(context, isDesktop) : _buildServicesContent(context, isDesktop),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardContent(BuildContext context, bool isDesktop) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Urgent Advisory banner
+        _buildUrgentBanner(),
+        const SizedBox(height: 32),
+        
+        // Welcome & Portal Overview
+        Text(
+          'National Health Surveillance & Resource Portal',
+          style: GoogleFonts.outfit(
+            fontSize: isDesktop ? 36 : 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Official public dashboard of the Ministry of Health and Family Welfare, Government of Bangladesh.',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            color: AppColors.textMuted,
+          ),
+        ),
+        const SizedBox(height: 32),
+
+        // Quick Stats grid
+        _buildStatsGrid(isDesktop),
+        const SizedBox(height: 40),
+
+        // Main Layout split for desktop vs mobile
+        if (isDesktop)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: _buildDiseaseOutbreakChart(context)),
+              const SizedBox(width: 32),
+              Expanded(flex: 2, child: _buildHospitalBedAvailability(context)),
+            ],
+          )
+        else ...[
+          _buildDiseaseOutbreakChart(context),
+          const SizedBox(height: 32),
+          _buildHospitalBedAvailability(context),
+        ],
+
+        const SizedBox(height: 40),
+        // Information Cards Section
+        _buildPublicServices(isDesktop),
+        const SizedBox(height: 48),
+
+        // Footer
+        _buildFooter(),
+      ],
+    );
+  }
+
+  Widget _buildServicesContent(BuildContext context, bool isDesktop) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Public Health Services & Applications',
+          style: GoogleFonts.outfit(
+            fontSize: isDesktop ? 36 : 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Apply for specialized roles, book appointments, or request administrative access.',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            color: AppColors.textMuted,
+          ),
+        ),
+        const SizedBox(height: 40),
+        
+        GridView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: isDesktop ? 3 : 1,
+            crossAxisSpacing: 24,
+            mainAxisSpacing: 24,
+            mainAxisExtent: 220,
+          ),
           children: [
-            // Header / Navigation Bar
-            _buildNavBar(context, isDesktop),
+            _buildServiceApplicationCard(
+              title: 'Apply for Doctor Appointment',
+              description: 'Schedule a visit with specialized national health doctors in available hospitals.',
+              icon: Icons.calendar_month_rounded,
+              color: AppColors.secondary,
+              onTap: () {
+                // Placeholder for appointment system
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please Sign In to book appointments.')));
+              },
+            ),
+            _buildServiceApplicationCard(
+              title: 'Apply for Doctor Role',
+              description: 'Register yourself as a medical professional to get your verified Doctor dashboard.',
+              icon: Icons.medical_information_rounded,
+              color: Colors.blueAccent,
+              onTap: () => _handleRoleApplication('DOCTOR', 'Doctor registration application'),
+            ),
+            _buildServiceApplicationCard(
+              title: 'Apply for Hospital Admin',
+              description: 'Register as an administrator to manage bed capacities, ICUs, and incoming patients.',
+              icon: Icons.local_hospital_rounded,
+              color: Colors.purpleAccent,
+              onTap: () => _handleRoleApplication('HOSPITAL', 'Hospital Administrator application'),
+            ),
+            _buildServiceApplicationCard(
+              title: 'Apply for Super Admin (Govt)',
+              description: 'Request clearance for national-level Government oversight and approval authority.',
+              icon: Icons.admin_panel_settings_rounded,
+              color: AppColors.primary,
+              onTap: () => _handleRoleApplication('GOVT', 'Government Super Admin application'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 60),
+        _buildFooter(),
+      ],
+    );
+  }
 
-            // Hero Section
-            _buildHeroSection(context, isDesktop, size),
+  void _handleRoleApplication(String role, String notes) async {
+    final usernameController = TextEditingController();
+    
+    final username = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: Text('Apply for $role Role', style: GoogleFonts.outfit(color: Colors.white)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Please enter your username to submit the application.', style: GoogleFonts.inter(color: AppColors.textSecondary)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: usernameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Username',
+                  hintStyle: const TextStyle(color: AppColors.textMuted),
+                  filled: true,
+                  fillColor: Colors.black.withOpacity(0.2),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: AppColors.textMuted)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (usernameController.text.isNotEmpty) {
+                  Navigator.pop(context, usernameController.text.trim());
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              child: const Text('Submit Application', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
 
-            // Statistics Section
-            _buildStatsSection(context, isDesktop),
+    if (username == null || username.isEmpty) return;
 
-            // Core Features Section
-            _buildFeaturesSection(context, isDesktop),
+    try {
+      await ref.read(applicationServiceProvider).applyForRole(username, role, notes);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Application for $role submitted successfully!')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to submit application: $e')));
+      }
+    }
+  }
 
-            // Call to Action Section
-            _buildCTASection(context),
-
-            // Footer
-            _buildFooter(),
+  Widget _buildServiceApplicationCard({
+    required String title, 
+    required String description, 
+    required IconData icon, 
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.02),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const Spacer(),
+            Text(
+              title,
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: GoogleFonts.inter(
+                color: AppColors.textMuted,
+                fontSize: 13,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Text(
+                  'Apply Now',
+                  style: GoogleFonts.inter(
+                    color: color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(Icons.arrow_forward_rounded, color: color, size: 14),
+              ],
+            )
           ],
         ),
       ),
@@ -42,11 +345,11 @@ class LandingPage extends StatelessWidget {
   Widget _buildNavBar(BuildContext context, bool isDesktop) {
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? 80 : 20,
-        vertical: 20,
+        horizontal: isDesktop ? 60 : 20,
+        vertical: 18,
       ),
       decoration: BoxDecoration(
-        color: AppColors.sidebar.withOpacity(0.9),
+        color: Colors.black.withOpacity(0.2),
         border: Border(
           bottom: BorderSide(
             color: Colors.white.withOpacity(0.05),
@@ -57,7 +360,7 @@ class LandingPage extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo & Name
+          // Logo & Title
           Row(
             children: [
               Container(
@@ -75,333 +378,122 @@ class LandingPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              Text(
-                'NUDHEB',
-                style: GoogleFonts.outfit(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 1.5,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'NUDHEB',
+                    style: GoogleFonts.outfit(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  Text(
+                    'National Unified Health Ecosystem',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
 
-          // Action Button
-          ElevatedButton(
-            onPressed: () => context.go('/role'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          // Right options
+          Row(
+            children: [
+              if (isDesktop) ...[
+                _buildEmergencyBadge(Icons.phone_rounded, '333', 'National Health Help'),
+                const SizedBox(width: 24),
+                _buildEmergencyBadge(Icons.local_hospital_rounded, '999', 'Ambulance dispatch'),
+                const SizedBox(width: 32),
+              ],
+              ElevatedButton.icon(
+                onPressed: () => context.push('/login'),
+                icon: const Icon(Icons.login_rounded, size: 18),
+                label: const Text('Sign In / Register'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
               ),
-              elevation: 0,
-            ),
-            child: Text(
-              'Sign In / Register',
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.w600,
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmergencyBadge(IconData icon, String hotline, String desc) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.orange, size: 20),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Call $hotline',
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
                 fontSize: 14,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeroSection(BuildContext context, bool isDesktop, Size size) {
-    final content = Column(
-      crossAxisAlignment:
-          isDesktop ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-          ),
-          child: Text(
-            '🇧🇩 Digital Bangladesh Health Initiative',
-            style: GoogleFonts.inter(
-              color: AppColors.secondary,
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'National Unified Digital\nHealthcare Ecosystem',
-          textAlign: isDesktop ? TextAlign.left : TextAlign.center,
-          style: GoogleFonts.outfit(
-            fontSize: isDesktop ? 54 : 32,
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-            height: 1.2,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Connecting Citizens, Medical Professionals, Hospital Networks, and Policy Makers into one secure, unified digital infrastructure.',
-          textAlign: isDesktop ? TextAlign.left : TextAlign.center,
-          style: GoogleFonts.inter(
-            fontSize: isDesktop ? 18 : 14,
-            color: AppColors.textMuted,
-            height: 1.6,
-          ),
-        ),
-        const SizedBox(height: 40),
-        Row(
-          mainAxisAlignment:
-              isDesktop ? MainAxisAlignment.start : MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () => context.go('/role'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 22,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 0,
-              ).copyWith(
-                backgroundColor: WidgetStateProperty.all(Colors.transparent),
-                shadowColor: WidgetStateProperty.all(Colors.transparent),
-              ),
-              child: Ink(
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.secondary],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.4),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 18,
-                  ),
-                  alignment: Alignment.center,
-                  child: Row(
-                    children: [
-                      Text(
-                        'Get Started / Access Portal',
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Icon(
-                        Icons.arrow_forward_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                ),
+            Text(
+              desc,
+              style: GoogleFonts.inter(
+                color: AppColors.textMuted,
+                fontSize: 10,
               ),
             ),
           ],
-        ),
+        )
       ],
     );
-
-    final heroImage = Center(
-      child: Container(
-        height: isDesktop ? 450 : 300,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.05)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 40,
-              offset: const Offset(0, 20),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: GridPainter(),
-                ),
-              ),
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.primary.withOpacity(0.1),
-                        border: Border.all(
-                          color: AppColors.primary.withOpacity(0.3),
-                          width: 2,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.health_and_safety_outlined,
-                        size: 80,
-                        color: AppColors.secondary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'SECURED BY NUDHEB SHIELD',
-                      style: GoogleFonts.outfit(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Smart Hospital Network • Citizen Health Wallet • AI Disease Insights',
-                      style: GoogleFonts.inter(
-                        color: AppColors.textMuted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? 80 : 24,
-        vertical: isDesktop ? 80 : 40,
-      ),
-      child: isDesktop
-          ? Row(
-              children: [
-                Expanded(child: content),
-                const SizedBox(width: 60),
-                Expanded(child: heroImage),
-              ],
-            )
-          : Column(
-              children: [
-                content,
-                const SizedBox(height: 48),
-                heroImage,
-              ],
-            ),
-    );
   }
 
-  Widget _buildStatsSection(BuildContext context, bool isDesktop) {
-    final stats = [
-      _StatsItem(
-        label: 'Citizen Health Wallets',
-        value: '165M+',
-        icon: Icons.people_rounded,
-        color: AppColors.primary,
-      ),
-      _StatsItem(
-        label: 'Registered Clinicians',
-        value: '50K+',
-        icon: Icons.medical_services_rounded,
-        color: AppColors.secondary,
-      ),
-      _StatsItem(
-        label: 'Integrated Facilities',
-        value: '2.5K+',
-        icon: Icons.local_hospital_rounded,
-        color: Colors.purple,
-      ),
-      _StatsItem(
-        label: 'Surveillance Analytics',
-        value: 'Real-time',
-        icon: Icons.analytics_rounded,
-        color: Colors.orange,
-      ),
-    ];
-
+  Widget _buildUrgentBanner() {
     return Container(
-      color: Colors.black.withOpacity(0.15),
-      padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? 80 : 24,
-        vertical: 60,
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          if (isDesktop) {
-            return Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: stats
-                  .map((stat) => Expanded(child: _buildStatCard(stat)))
-                  .toList(),
-            );
-          } else {
-            return Column(
-              children: stats.map((stat) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _buildStatCard(stat),
-                );
-              }).toList(),
-            );
-          }
-        },
-      ),
-    );
-  }
-
-  Widget _buildStatCard(_StatsItem stat) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        color: AppColors.danger.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.danger.withOpacity(0.3)),
       ),
-      child: Column(
+      child: Row(
         children: [
-          Icon(stat.icon, color: stat.color, size: 36),
-          const SizedBox(height: 16),
-          Text(
-            stat.value,
-            style: GoogleFonts.outfit(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            stat.label,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              color: AppColors.textMuted,
-              fontSize: 13,
+          const Icon(Icons.warning_amber_rounded, color: AppColors.danger, size: 24),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'HEALTH ALERT: High Dengue Vector Activity Detected',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'MOHFW recommends clearing stagnant water around homes. Seek consultation immediately if experiencing rapid fever spikes.',
+                  style: GoogleFonts.inter(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -409,114 +501,240 @@ class LandingPage extends StatelessWidget {
     );
   }
 
-  Widget _buildFeaturesSection(BuildContext context, bool isDesktop) {
-    final features = [
-      _FeatureItem(
-        title: 'Unified Health ID',
-        desc:
-            'A lifetime digital identity for every citizen, consolidates your full history of clinical visits, labs, prescriptions, and reports.',
-        icon: Icons.fingerprint_rounded,
-      ),
-      _FeatureItem(
-        title: 'Smart Clinical Workspace',
-        desc:
-            'AI-guided diagnostics tool for registered doctors to write smart prescriptions, view history, and coordinate care referrals.',
-        icon: Icons.add_moderator_rounded,
-      ),
-      _FeatureItem(
-        title: 'Command Center & Pharmacy',
-        desc:
-            'Hospital management tools including electronic queues, automated inventory control, and direct-to-pharmacy prescription delivery.',
-        icon: Icons.dashboard_customize_rounded,
-      ),
-      _FeatureItem(
-        title: 'National Surveillance',
-        desc:
-            'Enables the Ministry of Health to trace epidemic vectors, manage national resources, and dispatch automated warnings.',
-        icon: Icons.security_update_good_rounded,
-      ),
+  Widget _buildStatsGrid(bool isDesktop) {
+    final stats = [
+      _StatData('Citizen Health Wallets', '84,203,149', Icons.wallet_rounded, AppColors.primary),
+      _StatData('Registered Doctors', '53,291', Icons.medical_information_rounded, AppColors.secondary),
+      _StatData('Integrated Facilities', '2,481', Icons.local_hospital_rounded, Colors.purple),
+      _StatData('Vaccine Doses Issued', '194,541,202', Icons.vaccines_rounded, const Color(0xFF10B981)),
     ];
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isDesktop ? 80 : 24,
-        vertical: 80,
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: isDesktop ? 4 : 2,
+        crossAxisSpacing: 20,
+        mainAxisSpacing: 20,
+        mainAxisExtent: 110,
       ),
-      child: Column(
-        children: [
-          Text(
-            'Integrated Ecosystem Pillars',
-            style: GoogleFonts.outfit(
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+      itemCount: stats.length,
+      itemBuilder: (context, index) {
+        final stat = stats[index];
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.02),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.06)),
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Four major segments operating in a secure, unified decentralized blockchain network.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 60),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: isDesktop ? 2 : 1,
-              crossAxisSpacing: 30,
-              mainAxisSpacing: 30,
-              childAspectRatio: isDesktop ? 1.8 : 1.4,
-            ),
-            itemCount: features.length,
-            itemBuilder: (context, index) {
-              final feature = features[index];
-              return Container(
-                padding: const EdgeInsets.all(32),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.02),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
+                  color: stat.color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                child: Icon(stat.icon, color: stat.color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        feature.icon,
-                        color: AppColors.secondary,
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
                     Text(
-                      feature.title,
+                      stat.value,
                       style: GoogleFonts.outfit(
+                        color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 8),
                     Text(
-                      feature.desc,
+                      stat.label,
                       style: GoogleFonts.inter(
-                        fontSize: 14,
                         color: AppColors.textMuted,
-                        height: 1.5,
+                        fontSize: 12,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDiseaseOutbreakChart(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Disease Outbreak & Outpatient Trends',
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'National monthly reports representing influenza and vector cases',
+                    style: GoogleFonts.inter(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const CircleAvatar(backgroundColor: AppColors.primary, radius: 4),
+                    const SizedBox(width: 6),
+                    Text('Influenza', style: GoogleFonts.inter(color: Colors.white, fontSize: 11)),
+                    const SizedBox(width: 12),
+                    const CircleAvatar(backgroundColor: AppColors.secondary, radius: 4),
+                    const SizedBox(width: 6),
+                    Text('Dengue', style: GoogleFonts.inter(color: Colors.white, fontSize: 11)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            height: 220,
+            width: double.infinity,
+            child: CustomPaint(
+              painter: OutbreakChartPainter(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul']
+                .map((m) => Text(m, style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 11)))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHospitalBedAvailability(BuildContext context) {
+    final hospitals = [
+      _HospitalStatus('Dhaka Medical College', 'Dhaka', 150, 2600),
+      _HospitalStatus('Chittagong Medical College', 'Chattogram', 113, 1313),
+      _HospitalStatus('Square Hospitals Ltd.', 'Dhaka', 80, 400),
+      _HospitalStatus('Sylhet MAG Osmani Medical', 'Sylhet', 50, 900),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Emergency ICU & Bed Tracker',
+            style: GoogleFonts.outfit(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            'Real-time bed counts across integrated health networks',
+            style: GoogleFonts.inter(
+              color: AppColors.textMuted,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 24),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: hospitals.length,
+            separatorBuilder: (context, index) => Divider(color: Colors.white.withOpacity(0.05), height: 20),
+            itemBuilder: (context, index) {
+              final h = hospitals[index];
+              final availPct = h.availableBeds / h.totalBeds;
+              return Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          h.name,
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          '${h.division} • ${h.totalBeds} Total Beds',
+                          style: GoogleFonts.inter(
+                            color: AppColors.textMuted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '${h.availableBeds} Available',
+                        style: GoogleFonts.outfit(
+                          color: availPct > 0.15 ? Colors.greenAccent : Colors.orangeAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      SizedBox(
+                        width: 80,
+                        height: 4,
+                        child: LinearProgressIndicator(
+                          value: availPct,
+                          backgroundColor: Colors.white.withOpacity(0.05),
+                          color: availPct > 0.15 ? Colors.greenAccent : Colors.orangeAccent,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      )
+                    ],
+                  ),
+                ],
               );
             },
           ),
@@ -525,119 +743,103 @@ class LandingPage extends StatelessWidget {
     );
   }
 
-  Widget _buildCTASection(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 60),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppColors.primary.withOpacity(0.8),
-            AppColors.secondary.withOpacity(0.8),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget _buildPublicServices(bool isDesktop) {
+    final services = [
+      _ServiceData('Verify Health ID', 'Check status and validation of your national Citizen Health profile wallet.', Icons.fingerprint_rounded),
+      _ServiceData('Telehealth Directory', 'Find active clinicians, specialist queues, and consultation fees.', Icons.medical_services_outlined),
+      _ServiceData('Vaccine Registration', 'Apply for Covid, Hep-B, and polio child booster dose cards.', Icons.shield_rounded),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Citizen e-Health Registries & Tools',
+          style: GoogleFonts.outfit(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
-            blurRadius: 30,
-            offset: const Offset(0, 10),
+        const SizedBox(height: 20),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: isDesktop ? 3 : 1,
+            crossAxisSpacing: 24,
+            mainAxisSpacing: 24,
+            mainAxisExtent: 160,
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Text(
-            'Ready to access NUDHEB portal?',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.outfit(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Select your role to sign in or register your account in the national network.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              color: Colors.white.withOpacity(0.8),
-            ),
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () => context.go('/role'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+          itemCount: services.length,
+          itemBuilder: (context, index) {
+            final s = services[index];
+            return Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.01),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.white.withOpacity(0.04)),
               ),
-              elevation: 0,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Access Unified Portal',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(s.icon, color: AppColors.secondary, size: 28),
+                  const SizedBox(height: 16),
+                  Text(
+                    s.title,
+                    style: GoogleFonts.outfit(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  size: 20,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    s.desc,
+                    style: GoogleFonts.inter(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
   Widget _buildFooter() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
+      padding: const EdgeInsets.only(top: 40, bottom: 20),
       decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(color: Colors.white.withOpacity(0.05), width: 1),
-        ),
+        border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
       ),
       child: Column(
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.health_and_safety,
-                color: AppColors.textMuted,
-                size: 20,
-              ),
+              const Icon(Icons.account_balance, color: AppColors.textMuted, size: 18),
               const SizedBox(width: 8),
               Text(
-                'NUDHEB Ecosystem Platform',
+                'Ministry of Health and Family Welfare, Bangladesh',
                 style: GoogleFonts.outfit(
                   color: AppColors.textMuted,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+                  fontSize: 13,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
-            '© 2026 Ministry of Health and Family Welfare, Government of the People\'s Republic of Bangladesh',
-            textAlign: TextAlign.center,
+            '© 2026 NUDHEB Platform Ecosystem. Built for smart healthcare management.',
             style: GoogleFonts.inter(
-              fontSize: 12,
               color: AppColors.textMuted.withOpacity(0.5),
+              fontSize: 11,
             ),
           ),
         ],
@@ -646,46 +848,96 @@ class LandingPage extends StatelessWidget {
   }
 }
 
-class _StatsItem {
+class _StatData {
   final String label;
   final String value;
   final IconData icon;
   final Color color;
 
-  _StatsItem({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
+  _StatData(this.label, this.value, this.icon, this.color);
 }
 
-class _FeatureItem {
+class _HospitalStatus {
+  final String name;
+  final String division;
+  final int availableBeds;
+  final int totalBeds;
+
+  _HospitalStatus(this.name, this.division, this.availableBeds, this.totalBeds);
+}
+
+class _ServiceData {
   final String title;
   final String desc;
   final IconData icon;
 
-  _FeatureItem({
-    required this.title,
-    required this.desc,
-    required this.icon,
-  });
+  _ServiceData(this.title, this.desc, this.icon);
 }
 
-class GridPainter extends CustomPainter {
+class OutbreakChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+    final gridPaint = Paint()
       ..color = Colors.white.withOpacity(0.03)
-      ..strokeWidth = 1.0;
+      ..strokeWidth = 1;
 
-    const double gridSpacing = 30.0;
-
-    for (double i = 0; i < size.width; i += gridSpacing) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    // Draw horizontal grids
+    for (double i = 0; i <= size.height; i += size.height / 4) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), gridPaint);
     }
-    for (double i = 0; i < size.height; i += gridSpacing) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+
+    final fluPaint = Paint()
+      ..color = AppColors.primary
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
+
+    final denguePaint = Paint()
+      ..color = AppColors.secondary
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke;
+
+    // Chart mock data points
+    final fluPoints = [
+      Offset(0, size.height * 0.8),
+      Offset(size.width * 0.16, size.height * 0.6),
+      Offset(size.width * 0.33, size.height * 0.4),
+      Offset(size.width * 0.5, size.height * 0.5),
+      Offset(size.width * 0.66, size.height * 0.35),
+      Offset(size.width * 0.83, size.height * 0.2),
+      Offset(size.width, size.height * 0.1),
+    ];
+
+    final denguePoints = [
+      Offset(0, size.height * 0.95),
+      Offset(size.width * 0.16, size.height * 0.85),
+      Offset(size.width * 0.33, size.height * 0.7),
+      Offset(size.width * 0.5, size.height * 0.3),
+      Offset(size.width * 0.66, size.height * 0.15),
+      Offset(size.width * 0.83, size.height * 0.25),
+      Offset(size.width, size.height * 0.45),
+    ];
+
+    final fluPath = Path()..moveTo(fluPoints.first.dx, fluPoints.first.dy);
+    for (var p in fluPoints) {
+      fluPath.lineTo(p.dx, p.dy);
+    }
+
+    final denguePath = Path()..moveTo(denguePoints.first.dx, denguePoints.first.dy);
+    for (var p in denguePoints) {
+      denguePath.lineTo(p.dx, p.dy);
+    }
+
+    // Draw lines
+    canvas.drawPath(fluPath, fluPaint);
+    canvas.drawPath(denguePath, denguePaint);
+
+    // Draw dots
+    final dotPaint = Paint()..style = PaintingStyle.fill;
+    for (var p in fluPoints) {
+      canvas.drawCircle(p, 4, dotPaint..color = AppColors.primary);
+    }
+    for (var p in denguePoints) {
+      canvas.drawCircle(p, 4, dotPaint..color = AppColors.secondary);
     }
   }
 

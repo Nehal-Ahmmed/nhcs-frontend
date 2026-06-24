@@ -38,17 +38,32 @@ class RouteGuards {
     }
 
     // Role-based protection for private routes
+    String getActiveDashboard(String? activeRole) {
+      switch (activeRole) {
+        case AppConstants.rolePatient:
+          return '/user';
+        case AppConstants.roleDoctor:
+          return '/doctor';
+        case AppConstants.roleHospital:
+          return '/authority';
+        case AppConstants.roleGovt:
+          return '/government';
+        default:
+          return '/';
+      }
+    }
+
     if (state.uri.path.startsWith('/user') && authState.role != AppConstants.rolePatient) {
-      return '/login'; // Or their specific dashboard
+      return getActiveDashboard(authState.role);
     }
     if (state.uri.path.startsWith('/doctor') && authState.role != AppConstants.roleDoctor) {
-      return '/login';
+      return getActiveDashboard(authState.role);
     }
     if (state.uri.path.startsWith('/authority') && authState.role != AppConstants.roleHospital) {
-      return '/login';
+      return getActiveDashboard(authState.role);
     }
     if (state.uri.path.startsWith('/government') && authState.role != AppConstants.roleGovt) {
-      return '/login';
+      return getActiveDashboard(authState.role);
     }
 
     return null; // Allowed

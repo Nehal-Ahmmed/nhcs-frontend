@@ -3,16 +3,15 @@ class ApiEndpoints {
   static const String login = '/auth/login';
   static const String refresh = '/auth/refresh';
   static const String logout = '/auth/logout';
-  static const String registerPatient = '/auth/register/patient';
-  static const String registerDoctor = '/auth/register/doctor';
+  static const String register = '/auth/register';
 
   // Patient
-  static const String patientProfile = '/patient/profile';
-  static const String patientDashboardSummary = '/patient/dashboard/summary';
-  static const String patientAiSummary = '/patient/dashboard/ai-summary';
+  static const String patientProfile = '/patients/me';
+  static const String patientDashboardSummary = '/patients/dashboard/summary';
+  static const String patientAiSummary = '/patients/dashboard/ai-summary';
   
   // Doctor
-  static const String doctorProfile = '/doctor/profile';
+  static const String doctorProfile = '/doctors/me';
   static const String doctorDashboardSummary = '/doctor/dashboard/summary';
   static const String doctorQueue = '/doctor/queue';
 
@@ -21,4 +20,9 @@ class ApiEndpoints {
   
   // Govt
   static const String govtDashboardOverview = '/govt/dashboard/national-overview';
+  // Applications
+  static const String applyRole = '/applications';
+  static const String pendingApplications = '/applications/pending';
+  static String approveApplication(int id) => '/applications/$id/approve';
+  static String rejectApplication(int id) => '/applications/$id/reject';
 }

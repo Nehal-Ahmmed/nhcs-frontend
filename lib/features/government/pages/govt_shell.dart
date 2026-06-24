@@ -7,6 +7,7 @@ import 'govt_registries_page.dart';
 import 'govt_diseases_page.dart';
 import 'govt_resources_page.dart';
 import 'govt_compliance_page.dart';
+import 'govt_applications_page.dart';
 
 class GovtShell extends ConsumerWidget {
   const GovtShell({super.key});
@@ -17,6 +18,7 @@ class GovtShell extends ConsumerWidget {
     GovtDiseasesPage(),
     GovtResourcesPage(),
     GovtCompliancePage(),
+    GovtApplicationsPage(),
   ];
 
   @override

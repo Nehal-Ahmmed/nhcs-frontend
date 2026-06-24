@@ -3,7 +3,8 @@ class AppConstants {
   static const String appVersion = '1.0.0';
 
   // Network
-  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://localhost:8080/api');
+  // Note: For Android Emulator use 10.0.2.2. For iOS Simulator or Web use localhost
+  static const String baseUrl = String.fromEnvironment('API_URL', defaultValue: 'http://localhost:8080/api/v1');
   static const int connectTimeout = 15000;
   static const int receiveTimeout = 15000;
 

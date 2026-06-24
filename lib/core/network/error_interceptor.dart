@@ -28,7 +28,13 @@ class ErrorInterceptor extends Interceptor {
 
   void _handleBadResponse(Response? response) {
     final statusCode = response?.statusCode;
-    final message = response?.data?['message'] ?? 'Unknown error';
+    String message = 'Unknown error';
+    
+    if (response?.data is Map<String, dynamic>) {
+      message = response?.data['message'] ?? 'Unknown error';
+    } else if (response?.data is String) {
+      message = 'Server Error: ${response?.data}'.substring(0, 100); // truncate HTML
+    }
 
     if (statusCode == 400) {
       throw ValidationException(message, details: response?.data?['errors']);

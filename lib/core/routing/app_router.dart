@@ -30,10 +30,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/login',
-        builder: (context, state) {
-          final role = state.uri.queryParameters['role'] ?? 'patient';
-          return LoginPage(role: role);
-        },
+        builder: (context, state) => const LoginPage(),
       ),
       GoRoute(
         path: '/user',

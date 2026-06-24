@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../theme/app_colors.dart';
 import '../providers/auth_provider.dart';
+import '../utils/constants.dart';
 
 // Sidebar for patient role
 class PatientSidebar extends ConsumerWidget {
@@ -38,7 +39,9 @@ class PatientSidebar extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 12),
+          const WorkspaceSwitcher(),
+          const SizedBox(height: 24),
           // Menu items
           _buildMenuItem(0, Icons.dashboard_rounded, 'Dashboard'),
           _buildMenuItem(1, Icons.timeline_rounded, 'Health Timeline'),
@@ -146,7 +149,9 @@ class DoctorSidebar extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text('Doctor Portal', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 12),
+          const WorkspaceSwitcher(),
+          const SizedBox(height: 24),
           _buildMenuItem(0, Icons.dashboard_rounded, 'Dashboard'),
           _buildMenuItem(1, Icons.edit_note_rounded, 'Clinical Workspace'),
           _buildMenuItem(2, Icons.science_rounded, 'Report Review'),
@@ -238,7 +243,9 @@ class HospitalSidebar extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text('Hospital Authority', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 12),
+          const WorkspaceSwitcher(),
+          const SizedBox(height: 24),
           _buildMenuItem(0, Icons.dashboard_rounded, 'Command Center'),
           _buildMenuItem(1, Icons.receipt_long_rounded, 'Reception & Queue'),
           _buildMenuItem(2, Icons.people_rounded, 'Staff Management'),
@@ -331,12 +338,15 @@ class GovtSidebar extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text('Government Authority', style: GoogleFonts.inter(color: AppColors.textMuted, fontSize: 12)),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 12),
+          const WorkspaceSwitcher(),
+          const SizedBox(height: 24),
           _buildMenuItem(0, Icons.dashboard_rounded, 'National Overview'),
           _buildMenuItem(1, Icons.folder_shared_rounded, 'National Registries'),
           _buildMenuItem(2, Icons.biotech_rounded, 'Disease Intelligence'),
           _buildMenuItem(3, Icons.map_rounded, 'Resource Map'),
           _buildMenuItem(4, Icons.gavel_rounded, 'Compliance Center'),
+          _buildMenuItem(5, Icons.assignment_rounded, 'Role Applications'),
           const Spacer(),
           Padding(
             padding: const EdgeInsets.all(16),
@@ -383,6 +393,75 @@ class GovtSidebar extends ConsumerWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class WorkspaceSwitcher extends ConsumerWidget {
+  const WorkspaceSwitcher({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+    final roles = authState.roles;
+    final currentRole = authState.role;
+
+    if (roles.length <= 1) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: currentRole,
+          dropdownColor: AppColors.sidebar,
+          icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 20),
+          isExpanded: true,
+          style: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+          items: roles.map((role) {
+            String displayName = 'Citizen Workspace';
+            IconData icon = Icons.person_rounded;
+            Color iconColor = AppColors.primary;
+
+            if (role == AppConstants.roleDoctor) {
+              displayName = 'Doctor Console';
+              icon = Icons.medical_services_rounded;
+              iconColor = AppColors.secondary;
+            } else if (role == AppConstants.roleHospital) {
+              displayName = 'Hospital Center';
+              icon = Icons.local_hospital_rounded;
+              iconColor = const Color(0xFF7C3AED);
+            } else if (role == AppConstants.roleGovt) {
+              displayName = 'Govt Command';
+              icon = Icons.account_balance_rounded;
+              iconColor = const Color(0xFFDC2626);
+            }
+
+            return DropdownMenuItem<String>(
+              value: role,
+              child: Row(
+                children: [
+                  Icon(icon, color: iconColor, size: 16),
+                  const SizedBox(width: 8),
+                  Text(displayName, style: const TextStyle(overflow: TextOverflow.ellipsis)),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (newRole) {
+            if (newRole != null && newRole != currentRole) {
+              ref.read(authProvider.notifier).switchRole(newRole);
+            }
+          },
         ),
       ),
     );
