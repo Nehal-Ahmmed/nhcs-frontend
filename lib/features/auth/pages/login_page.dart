@@ -10,7 +10,8 @@ import '../../../core/providers/mock_provider.dart';
 import '../../../core/network/api_endpoints.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
-  const LoginPage({super.key});
+  final String? role;
+  const LoginPage({super.key, this.role});
 
   @override
   ConsumerState<LoginPage> createState() => _LoginPageState();
@@ -44,13 +45,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         _passwordController.text = 'password123';
         break;
     }
-  }
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   final _usernameController = TextEditingController();
@@ -179,6 +173,21 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             dynamicRoles,
           );
         }
+      }
+
+      if (mounted) {
+        final activeRole = ref.read(authProvider).role;
+        String targetRoute = '/role';
+        if (activeRole == 'PATIENT') {
+          targetRoute = '/user';
+        } else if (activeRole == 'DOCTOR') {
+          targetRoute = '/doctor';
+        } else if (activeRole == 'HOSPITAL') {
+          targetRoute = '/authority';
+        } else if (activeRole == 'GOVT') {
+          targetRoute = '/government';
+        }
+        context.go(targetRoute);
       }
     } catch (e) {
       String errMsg = 'Authentication failed';

@@ -24,19 +24,26 @@ class PatientSidebar extends ConsumerWidget {
           // Logo
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.health_and_safety, color: Colors.white, size: 24),
+            child: InkWell(
+              onTap: () => context.go('/'),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.health_and_safety, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('NUDHEB', style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Text('NUDHEB', style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 12),
@@ -50,34 +57,17 @@ class PatientSidebar extends ConsumerWidget {
           _buildMenuItem(4, Icons.person_rounded, 'My Profile'),
           _buildMenuItem(5, Icons.auto_awesome_rounded, 'AI Assistant'),
           const Spacer(),
-          // Go to Website
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: InkWell(
-              onTap: () => context.go('/'),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: Colors.white.withOpacity(0.05),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.language_rounded, color: Colors.white, size: 20),
-                    const SizedBox(width: 12),
-                    Text('Go to Website', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
+
           // Logout
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: InkWell(
-              onTap: () => ref.read(authProvider.notifier).logout(),
+              onTap: () async {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) {
+                  context.go('/');
+                }
+              },
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -155,16 +145,23 @@ class DoctorSidebar extends ConsumerWidget {
           const SizedBox(height: 32),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 24),
+            child: InkWell(
+              onTap: () => context.go('/'),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('NUDHEB', style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Text('NUDHEB', style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -181,29 +178,16 @@ class DoctorSidebar extends ConsumerWidget {
           _buildMenuItem(3, Icons.schedule_rounded, 'My Schedule'),
           _buildMenuItem(4, Icons.person_rounded, 'Profile'),
           const Spacer(),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: InkWell(
-              onTap: () => context.go('/'),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white.withOpacity(0.05)),
-                child: Row(
-                  children: [
-                    const Icon(Icons.language_rounded, color: Colors.white, size: 20),
-                    const SizedBox(width: 12),
-                    Text('Go to Website', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: InkWell(
-              onTap: () => ref.read(authProvider.notifier).logout(),
+              onTap: () async {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) {
+                  context.go('/');
+                }
+              },
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -268,16 +252,23 @@ class HospitalSidebar extends ConsumerWidget {
           const SizedBox(height: 32),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 24),
+            child: InkWell(
+              onTap: () => context.go('/'),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.local_hospital_rounded, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('NUDHEB', style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Text('NUDHEB', style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -295,29 +286,16 @@ class HospitalSidebar extends ConsumerWidget {
           _buildMenuItem(4, Icons.bed_rounded, 'Bed Management'),
           _buildMenuItem(5, Icons.medication_rounded, 'Pharmacy'),
           const Spacer(),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: InkWell(
-              onTap: () => context.go('/'),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white.withOpacity(0.05)),
-                child: Row(
-                  children: [
-                    const Icon(Icons.language_rounded, color: Colors.white, size: 20),
-                    const SizedBox(width: 12),
-                    Text('Go to Website', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: InkWell(
-              onTap: () => ref.read(authProvider.notifier).logout(),
+              onTap: () async {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) {
+                  context.go('/');
+                }
+              },
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -382,16 +360,23 @@ class GovtSidebar extends ConsumerWidget {
           const SizedBox(height: 32),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.account_balance_rounded, color: Colors.white, size: 24),
+            child: InkWell(
+              onTap: () => context.go('/'),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.account_balance_rounded, color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('NUDHEB', style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Text('NUDHEB', style: GoogleFonts.outfit(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
-              ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -409,29 +394,16 @@ class GovtSidebar extends ConsumerWidget {
           _buildMenuItem(4, Icons.gavel_rounded, 'Compliance Center'),
           _buildMenuItem(5, Icons.assignment_rounded, 'Role Applications'),
           const Spacer(),
+
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: InkWell(
-              onTap: () => context.go('/'),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white.withOpacity(0.05)),
-                child: Row(
-                  children: [
-                    const Icon(Icons.language_rounded, color: Colors.white, size: 20),
-                    const SizedBox(width: 12),
-                    Text('Go to Website', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: InkWell(
-              onTap: () => ref.read(authProvider.notifier).logout(),
+              onTap: () async {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) {
+                  context.go('/');
+                }
+              },
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -540,6 +512,17 @@ class WorkspaceSwitcher extends ConsumerWidget {
           onChanged: (newRole) {
             if (newRole != null && newRole != currentRole) {
               ref.read(authProvider.notifier).switchRole(newRole);
+              String targetRoute = '/role';
+              if (newRole == AppConstants.rolePatient) {
+                targetRoute = '/user';
+              } else if (newRole == AppConstants.roleDoctor) {
+                targetRoute = '/doctor';
+              } else if (newRole == AppConstants.roleHospital) {
+                targetRoute = '/authority';
+              } else if (newRole == AppConstants.roleGovt) {
+                targetRoute = '/government';
+              }
+              context.go(targetRoute);
             }
           },
         ),

@@ -14,12 +14,15 @@ import '../../features/hospital/pages/hospital_shell.dart';
 import '../../features/government/pages/govt_shell.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final notifier = ref.watch(authProvider.notifier);
 
   return GoRouter(
     initialLocation: '/',
-    refreshListenable: _GoRouterRefreshStream(ref.watch(authProvider.notifier).stream),
-    redirect: (context, state) => RouteGuards.guardRoute(context, state, authState),
+    refreshListenable: _GoRouterRefreshStream(notifier.stream),
+    redirect: (context, state) {
+      final authState = ref.read(authProvider);
+      return RouteGuards.guardRoute(context, state, authState);
+    },
     routes: [
       GoRoute(
         path: '/',
@@ -35,7 +38,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginPage(),
+        builder: (context, state) {
+          final role = state.uri.queryParameters['role'];
+          return LoginPage(role: role);
+        },
       ),
       GoRoute(
         path: '/user',
