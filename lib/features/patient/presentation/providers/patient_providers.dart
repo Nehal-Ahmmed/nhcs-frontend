@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import '../../../../core/providers/dio_provider.dart';
+import '../../../../core/providers/mock_provider.dart';
 import '../../data/models/appointment.dart';
 import '../../data/models/dashboard_summary.dart';
 import '../../data/models/health_event.dart';
@@ -9,7 +11,9 @@ import '../../data/repositories/patient_repository.dart';
 
 // 1. Patient Repository Provider
 final patientRepositoryProvider = Provider<PatientRepository>((ref) {
-  return PatientRepositoryImpl();
+  final dio = ref.watch(dioProvider);
+  final isMock = ref.watch(isMockModeProvider);
+  return PatientRepositoryImpl(dio, isMock);
 });
 
 // A constant mock health ID for current logged-in patient
