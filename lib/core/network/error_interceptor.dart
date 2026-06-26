@@ -33,7 +33,9 @@ class ErrorInterceptor extends Interceptor {
     if (response?.data is Map<String, dynamic>) {
       message = response?.data['message'] ?? 'Unknown error';
     } else if (response?.data is String) {
-      message = 'Server Error: ${response?.data}'.substring(0, 100); // truncate HTML
+      final dataStr = response?.data as String;
+      final fullMsg = 'Server Error: $dataStr';
+      message = fullMsg.length > 100 ? fullMsg.substring(0, 100) : fullMsg;
     }
 
     if (statusCode == 400) {

@@ -21,10 +21,10 @@ class DoctorSpecialist {
 
   factory DoctorSpecialist.fromJson(Map<String, dynamic> json) {
     return DoctorSpecialist(
-      id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? '',
+      id: json['id']?.toString() ?? '',
+      name: json['name'] as String? ?? json['fullName'] as String? ?? '',
       specialization: json['specialization'] as String? ?? '',
-      hospital: json['hospital'] as String? ?? '',
+      hospital: json['hospital'] as String? ?? json['hospitalAffiliation'] as String? ?? '',
       rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
       experienceYears: json['experienceYears'] as int? ?? 0,
       consultationFee: json['consultationFee'] as int? ?? 0,
@@ -59,7 +59,7 @@ class TimeSlot {
 
   factory TimeSlot.fromJson(Map<String, dynamic> json) {
     return TimeSlot(
-      id: json['id'] as String? ?? '',
+      id: json['id']?.toString() ?? '',
       time: json['time'] as String? ?? '',
       isAvailable: json['isAvailable'] as bool? ?? true,
     );
@@ -99,7 +99,7 @@ class Appointment {
       doctor: DoctorSpecialist.fromJson(json['doctor'] as Map<String, dynamic>),
       date: json['date'] != null ? DateTime.parse(json['date'] as String) : DateTime.now(),
       timeSlot: json['timeSlot'] as String? ?? '',
-      hospital: json['hospital'] as String? ?? '',
+      hospital: json['hospital'] as String? ?? json['hospitalName'] as String? ?? '',
       queueNumber: json['queueNumber'] as String? ?? '',
       status: json['status'] as String? ?? 'Upcoming',
     );
