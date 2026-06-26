@@ -15,30 +15,7 @@ class RouteGuards {
       return null; // Wait for auth check to finish
     }
 
-    if (!authState.isAuthenticated) {
-      if (isAuthPage || isPublicPage) {
-        return null; // Let them access public routes
-      }
-      return '/'; // Redirect to landing if not logged in and trying to access private route
-    }
-
-    // If logged in, redirect away from login/auth screens
-    if (isAuthPage) {
-      switch (authState.role) {
-        case AppConstants.rolePatient:
-          return '/user';
-        case AppConstants.roleDoctor:
-          return '/doctor';
-        case AppConstants.roleHospital:
-          return '/authority';
-        case AppConstants.roleGovt:
-          return '/government';
-        default:
-          return '/';
-      }
-    }
-
-    // Role-based protection for private routes
+    // Role-based dashboard mapping
     String getActiveDashboard(String? activeRole) {
       switch (activeRole) {
         case AppConstants.rolePatient:
@@ -50,10 +27,25 @@ class RouteGuards {
         case AppConstants.roleGovt:
           return '/government';
         default:
-          return '/';
+          return '/role';
       }
     }
 
+    // 1. Unauthenticated users flow
+    if (!authState.isAuthenticated) {
+      if (isAuthPage || isPublicPage) {
+        return null; // Let them access public or auth pages
+      }
+      return '/role'; // Force login funnel on protected access
+    }
+
+    // 2. Authenticated users flow
+    // Prevent logged-in users from visiting login or role selection pages
+    if (isAuthPage) {
+      return getActiveDashboard(authState.role);
+    }
+
+    // Cross-role protection (restrict access to dashboards of inactive roles)
     if (state.uri.path.startsWith('/user') && authState.role != AppConstants.rolePatient) {
       return getActiveDashboard(authState.role);
     }
@@ -67,6 +59,6 @@ class RouteGuards {
       return getActiveDashboard(authState.role);
     }
 
-    return null; // Allowed
+    return null; // Allowed (e.g. accessing own dashboard or public search page)
   }
 }

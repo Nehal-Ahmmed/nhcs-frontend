@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,8 +6,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/utils/constants.dart';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/application_provider.dart';
 
 class LandingPage extends ConsumerStatefulWidget {
@@ -346,7 +343,7 @@ class _LandingPageState extends ConsumerState<LandingPage> {
     );
   }
 
-  Widget _buildNavBar(BuildContext context, WidgetRef ref, bool isDesktop) {
+  Widget _buildNavBar(BuildContext context, bool isDesktop) {
     final authState = ref.watch(authProvider);
     final isAuthenticated = authState.isAuthenticated;
     return Container(
@@ -418,9 +415,33 @@ class _LandingPageState extends ConsumerState<LandingPage> {
                 const SizedBox(width: 32),
               ],
               ElevatedButton.icon(
-                onPressed: () => context.push('/login'),
-                icon: const Icon(Icons.login_rounded, size: 18),
-                label: const Text('Sign In / Register'),
+                onPressed: () {
+                  if (isAuthenticated) {
+                    final activeRole = authState.role;
+                    String target;
+                    switch (activeRole) {
+                      case AppConstants.rolePatient:
+                        target = '/user';
+                        break;
+                      case AppConstants.roleDoctor:
+                        target = '/doctor';
+                        break;
+                      case AppConstants.roleHospital:
+                        target = '/authority';
+                        break;
+                      case AppConstants.roleGovt:
+                        target = '/government';
+                        break;
+                      default:
+                        target = '/role';
+                    }
+                    context.go(target);
+                  } else {
+                    context.push('/login');
+                  }
+                },
+                icon: Icon(isAuthenticated ? Icons.dashboard_rounded : Icons.login_rounded, size: 18),
+                label: Text(isAuthenticated ? 'Go to Dashboard' : 'Sign In / Register'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,

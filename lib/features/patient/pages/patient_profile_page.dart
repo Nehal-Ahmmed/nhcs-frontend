@@ -29,6 +29,16 @@ class _PatientProfilePageState extends ConsumerState<PatientProfilePage> {
   late TextEditingController _iceRelationController;
   late TextEditingController _icePhoneController;
 
+  // New controllers for full editable properties
+  late TextEditingController _genderController;
+  late TextEditingController _bloodGroupController;
+  late TextEditingController _nationalIdController;
+  late TextEditingController _bpSystolicController;
+  late TextEditingController _bpDiastolicController;
+  late TextEditingController _bloodGlucoseController;
+  late TextEditingController _heartRateController;
+  late TextEditingController _weightController;
+
   @override
   void initState() {
     super.initState();
@@ -41,6 +51,15 @@ class _PatientProfilePageState extends ConsumerState<PatientProfilePage> {
     _iceNameController = TextEditingController();
     _iceRelationController = TextEditingController();
     _icePhoneController = TextEditingController();
+
+    _genderController = TextEditingController();
+    _bloodGroupController = TextEditingController();
+    _nationalIdController = TextEditingController();
+    _bpSystolicController = TextEditingController();
+    _bpDiastolicController = TextEditingController();
+    _bloodGlucoseController = TextEditingController();
+    _heartRateController = TextEditingController();
+    _weightController = TextEditingController();
   }
 
   @override
@@ -54,6 +73,15 @@ class _PatientProfilePageState extends ConsumerState<PatientProfilePage> {
     _iceNameController.dispose();
     _iceRelationController.dispose();
     _icePhoneController.dispose();
+
+    _genderController.dispose();
+    _bloodGroupController.dispose();
+    _nationalIdController.dispose();
+    _bpSystolicController.dispose();
+    _bpDiastolicController.dispose();
+    _bloodGlucoseController.dispose();
+    _heartRateController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
 
@@ -64,6 +92,14 @@ class _PatientProfilePageState extends ConsumerState<PatientProfilePage> {
     _maritalStatusController.text = profile.maritalStatus;
     _presentAddressController.text = profile.presentAddress;
     _permanentAddressController.text = profile.permanentAddress;
+    _genderController.text = profile.gender;
+    _bloodGroupController.text = profile.bloodGroup;
+    _nationalIdController.text = profile.nationalId;
+    _bpSystolicController.text = profile.vitals.bpSystolic;
+    _bpDiastolicController.text = profile.vitals.bpDiastolic;
+    _bloodGlucoseController.text = profile.vitals.bloodGlucose;
+    _heartRateController.text = profile.vitals.heartRate;
+    _weightController.text = profile.vitals.weight;
 
     if (profile.emergencyContacts.isNotEmpty) {
       _iceNameController.text = profile.emergencyContacts[0].name;
@@ -106,7 +142,18 @@ class _PatientProfilePageState extends ConsumerState<PatientProfilePage> {
       maritalStatus: _maritalStatusController.text.trim(),
       presentAddress: _presentAddressController.text.trim(),
       permanentAddress: _permanentAddressController.text.trim(),
+      gender: _genderController.text.trim(),
+      bloodGroup: _bloodGroupController.text.trim(),
+      nationalId: _nationalIdController.text.trim(),
       emergencyContacts: updatedICE,
+      vitals: VitalSign(
+        bpSystolic: _bpSystolicController.text.trim(),
+        bpDiastolic: _bpDiastolicController.text.trim(),
+        bloodGlucose: _bloodGlucoseController.text.trim(),
+        heartRate: _heartRateController.text.trim(),
+        weight: _weightController.text.trim(),
+        lastUpdated: DateTime.now(),
+      ),
     );
 
     final success = await ref.read(patientProfileProvider.notifier).updateProfile(updatedProfile);
@@ -285,6 +332,8 @@ class _PatientProfilePageState extends ConsumerState<PatientProfilePage> {
         _progressStep(1, 'Addresses'),
         _progressLine(1),
         _progressStep(2, 'Emergency'),
+        _progressLine(2),
+        _progressStep(3, 'Vitals'),
       ],
     );
   }
@@ -338,6 +387,12 @@ class _PatientProfilePageState extends ConsumerState<PatientProfilePage> {
             _wizardTextField('Occupation', _occupationController, Icons.work_outline_rounded),
             const SizedBox(height: 16),
             _wizardTextField('Marital Status', _maritalStatusController, Icons.people_outline_rounded),
+            const SizedBox(height: 16),
+            _wizardTextField('Gender', _genderController, Icons.transgender_rounded),
+            const SizedBox(height: 16),
+            _wizardTextField('Blood Group', _bloodGroupController, Icons.bloodtype_outlined),
+            const SizedBox(height: 16),
+            _wizardTextField('National ID (NID)', _nationalIdController, Icons.badge_outlined),
           ],
         );
       case 1:
@@ -372,6 +427,23 @@ class _PatientProfilePageState extends ConsumerState<PatientProfilePage> {
             _wizardTextField('Contact Phone', _icePhoneController, Icons.phone_rounded),
           ],
         );
+      case 3:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Health Vitals', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textSecondary)),
+            const SizedBox(height: 16),
+            _wizardTextField('BP Systolic (mmHg)', _bpSystolicController, Icons.favorite_rounded),
+            const SizedBox(height: 16),
+            _wizardTextField('BP Diastolic (mmHg)', _bpDiastolicController, Icons.favorite_rounded),
+            const SizedBox(height: 16),
+            _wizardTextField('Blood Glucose (mg/dL)', _bloodGlucoseController, Icons.bloodtype_rounded),
+            const SizedBox(height: 16),
+            _wizardTextField('Heart Rate (bpm)', _heartRateController, Icons.monitor_heart_rounded),
+            const SizedBox(height: 16),
+            _wizardTextField('Body Weight (kg)', _weightController, Icons.scale_rounded),
+          ],
+        );
       default:
         return const SizedBox.shrink();
     }
@@ -404,7 +476,7 @@ class _PatientProfilePageState extends ConsumerState<PatientProfilePage> {
           children: [
             TextButton(onPressed: _cancelEditing, child: const Text('Cancel')),
             const SizedBox(width: 12),
-            if (_currentStep < 2)
+            if (_currentStep < 3)
               ElevatedButton(
                 onPressed: () => setState(() => _currentStep++),
                 child: const Text('Next'),

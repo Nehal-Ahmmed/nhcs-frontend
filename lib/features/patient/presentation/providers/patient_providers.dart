@@ -8,9 +8,6 @@ import '../../data/models/health_event.dart';
 import '../../data/models/medical_record.dart';
 import '../../data/models/patient_profile.dart';
 import '../../data/repositories/patient_repository.dart';
-
-import '../../../../core/network/api_client.dart';
-
 // 1. Patient Repository Provider
 final patientRepositoryProvider = Provider<PatientRepository>((ref) {
   final dio = ref.watch(dioProvider);
