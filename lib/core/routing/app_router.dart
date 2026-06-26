@@ -7,6 +7,7 @@ import 'route_guards.dart';
 import '../../features/auth/pages/landing_page.dart';
 import '../../features/auth/pages/role_selection_page.dart';
 import '../../features/auth/pages/login_page.dart';
+import '../../features/auth/pages/search_doctors_page.dart';
 import '../../features/patient/pages/patient_shell.dart';
 import '../../features/doctor/pages/doctor_shell.dart';
 import '../../features/hospital/pages/hospital_shell.dart';
@@ -23,6 +24,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/',
         builder: (context, state) => const LandingPage(),
+      ),
+      GoRoute(
+        path: '/search_doctors',
+        builder: (context, state) => const SearchDoctorsPage(),
       ),
       GoRoute(
         path: '/role',

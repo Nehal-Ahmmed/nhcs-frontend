@@ -1,7 +1,11 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/utils/constants.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -342,7 +346,9 @@ class _LandingPageState extends ConsumerState<LandingPage> {
     );
   }
 
-  Widget _buildNavBar(BuildContext context, bool isDesktop) {
+  Widget _buildNavBar(BuildContext context, WidgetRef ref, bool isDesktop) {
+    final authState = ref.watch(authProvider);
+    final isAuthenticated = authState.isAuthenticated;
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: isDesktop ? 60 : 20,
@@ -352,7 +358,7 @@ class _LandingPageState extends ConsumerState<LandingPage> {
         color: Colors.black.withOpacity(0.2),
         border: Border(
           bottom: BorderSide(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withOpacity(0.1),
             width: 1,
           ),
         ),
@@ -944,3 +950,30 @@ class OutbreakChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+class _NavBarLink extends StatelessWidget {
+  final String title;
+  final VoidCallback onTap;
+
+  const _NavBarLink({required this.title, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Text(
+          title,
+          style: GoogleFonts.inter(
+            color: Colors.white.withOpacity(0.8),
+            fontWeight: FontWeight.w500,
+            fontSize: 15,
+          ),
+        ),
+      ),
+    );
+  }
+}
+

@@ -4,6 +4,7 @@ import '../models/govt_dashboard_stats.dart';
 import '../models/govt_registry_models.dart';
 import '../models/govt_resource_models.dart';
 import '../models/govt_audit_event.dart';
+import '../../../../core/network/api_client.dart';
 
 abstract class GovtRepository {
   Future<GovtDashboardStats> getDashboardStats();
@@ -15,12 +16,14 @@ abstract class GovtRepository {
   Future<void> updateDoctorStatus(String bmdcId, String status);
   Future<void> performHospitalAudit(String facilityId, double newScore, String status, String comment);
   Future<void> issueOutbreakAlert(String diseaseName, String title, String description, String riskLevel, String division);
+  Future<void> addHospital(HospitalProfile hospital);
 }
 
 class GovtRepositoryImpl implements GovtRepository {
   final GovtMockDatasource _datasource;
+  final ApiClient _apiClient;
 
-  GovtRepositoryImpl(this._datasource);
+  GovtRepositoryImpl(this._datasource, this._apiClient);
 
   @override
   Future<GovtDashboardStats> getDashboardStats() async {
@@ -39,7 +42,42 @@ class GovtRepositoryImpl implements GovtRepository {
 
   @override
   Future<List<HospitalProfile>> getHospitals() async {
-    return _datasource.hospitals;
+    try {
+      final response = await _apiClient.dio.get('/hospitals');
+      final List<dynamic> data = response.data;
+      final apiHospitals = data.map((json) => HospitalProfile(
+        facilityId: json['facilityId'] ?? '',
+        name: json['name'] ?? '',
+        division: json['division'] ?? '',
+        classification: json['classification'] ?? '',
+        totalBeds: json['totalBeds'] ?? 0,
+        occupiedBeds: json['occupiedBeds'] ?? 0,
+        complianceScore: (json['complianceScore'] as num?)?.toDouble() ?? 100.0,
+        status: json['status'] ?? 'Active',
+      )).toList();
+      return [...apiHospitals, ..._datasource.hospitals];
+    } catch (e) {
+      return _datasource.hospitals;
+    }
+  }
+
+  @override
+  Future<void> addHospital(HospitalProfile hospital) async {
+    final data = {
+      'name': hospital.name,
+      'division': hospital.division,
+      'classification': hospital.classification,
+      'totalBeds': hospital.totalBeds,
+      'occupiedBeds': hospital.occupiedBeds,
+      'complianceScore': hospital.complianceScore,
+      'status': hospital.status,
+    };
+    try {
+      await _apiClient.dio.post('/hospitals', data: data);
+    } catch (e) {
+      print('Failed to post hospital to API: $e');
+      _datasource.hospitals.insert(0, hospital); // Fallback
+    }
   }
 
   @override
@@ -173,5 +211,5 @@ final govtMockDatasourceProvider = Provider<GovtMockDatasource>((ref) {
 
 final govtRepositoryProvider = Provider<GovtRepository>((ref) {
   final ds = ref.watch(govtMockDatasourceProvider);
-  return GovtRepositoryImpl(ds);
+  return GovtRepositoryImpl(ds, ApiClient());
 });

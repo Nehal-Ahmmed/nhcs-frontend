@@ -19,6 +19,39 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   bool _isSignUp = false;
   bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-fill dummy credentials for easy testing
+    switch (widget.role) {
+      case 'doctor':
+        _usernameController.text = 'doctor';
+        _passwordController.text = 'password123';
+        break;
+      case 'authority':
+        _usernameController.text = 'hospital';
+        _passwordController.text = 'password123';
+        break;
+      case 'govt':
+        _usernameController.text = 'govt';
+        _passwordController.text = 'password123';
+        break;
+      case 'patient':
+      default:
+        _usernameController.text = 'patient';
+        _passwordController.text = 'password123';
+        break;
+    }
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();

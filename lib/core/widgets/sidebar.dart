@@ -50,9 +50,32 @@ class PatientSidebar extends ConsumerWidget {
           _buildMenuItem(4, Icons.person_rounded, 'My Profile'),
           _buildMenuItem(5, Icons.auto_awesome_rounded, 'AI Assistant'),
           const Spacer(),
+          // Go to Website
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: InkWell(
+              onTap: () => context.go('/'),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withOpacity(0.05),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.language_rounded, color: Colors.white, size: 20),
+                    const SizedBox(width: 12),
+                    Text('Go to Website', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           // Logout
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: InkWell(
               onTap: () => ref.read(authProvider.notifier).logout(),
               borderRadius: BorderRadius.circular(12),
@@ -159,7 +182,26 @@ class DoctorSidebar extends ConsumerWidget {
           _buildMenuItem(4, Icons.person_rounded, 'Profile'),
           const Spacer(),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: InkWell(
+              onTap: () => context.go('/'),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white.withOpacity(0.05)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.language_rounded, color: Colors.white, size: 20),
+                    const SizedBox(width: 12),
+                    Text('Go to Website', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: InkWell(
               onTap: () => ref.read(authProvider.notifier).logout(),
               borderRadius: BorderRadius.circular(12),
@@ -254,7 +296,26 @@ class HospitalSidebar extends ConsumerWidget {
           _buildMenuItem(5, Icons.medication_rounded, 'Pharmacy'),
           const Spacer(),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: InkWell(
+              onTap: () => context.go('/'),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white.withOpacity(0.05)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.language_rounded, color: Colors.white, size: 20),
+                    const SizedBox(width: 12),
+                    Text('Go to Website', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: InkWell(
               onTap: () => ref.read(authProvider.notifier).logout(),
               borderRadius: BorderRadius.circular(12),
@@ -349,7 +410,26 @@ class GovtSidebar extends ConsumerWidget {
           _buildMenuItem(5, Icons.assignment_rounded, 'Role Applications'),
           const Spacer(),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: InkWell(
+              onTap: () => context.go('/'),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), color: Colors.white.withOpacity(0.05)),
+                child: Row(
+                  children: [
+                    const Icon(Icons.language_rounded, color: Colors.white, size: 20),
+                    const SizedBox(width: 12),
+                    Text('Go to Website', style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: InkWell(
               onTap: () => ref.read(authProvider.notifier).logout(),
               borderRadius: BorderRadius.circular(12),
