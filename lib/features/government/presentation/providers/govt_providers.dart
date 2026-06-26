@@ -109,6 +109,11 @@ class GovtHospitalRegistryNotifier extends StateNotifier<List<HospitalProfile>> 
     state = await _repository.getHospitals();
   }
 
+  Future<void> addHospital(HospitalProfile hospital) async {
+    await _repository.addHospital(hospital);
+    loadHospitals(); // Refresh the list
+  }
+
   Future<void> auditHospital({
     required String facilityId,
     required double score,

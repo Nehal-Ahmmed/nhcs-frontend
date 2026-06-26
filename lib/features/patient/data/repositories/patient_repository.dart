@@ -6,6 +6,8 @@ import '../models/health_event.dart';
 import '../models/medical_record.dart';
 import '../models/patient_profile.dart';
 import '../datasources/patient_mock_datasource.dart';
+import '../../../../core/network/api_client.dart';
+import 'package:dio/dio.dart';
 
 abstract class PatientRepository {
   Future<DashboardSummary> getDashboardSummary(String healthId);

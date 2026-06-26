@@ -37,7 +37,8 @@ class ErrorInterceptor extends Interceptor {
     }
 
     if (statusCode == 400) {
-      throw ValidationException(message, details: response?.data?['errors']);
+      final details = response?.data is Map<String, dynamic> ? response?.data['errors'] : null;
+      throw ValidationException(message, details: details);
     } else if (statusCode == 401 || statusCode == 403) {
       throw AuthException(message);
     } else if (statusCode == 404) {

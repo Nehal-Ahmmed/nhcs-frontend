@@ -5,24 +5,25 @@ import '../providers/auth_provider.dart';
 
 class RouteGuards {
   static String? guardRoute(BuildContext context, GoRouterState state, AuthState authState) {
-    final isLoggingIn = state.uri.path == '/login' || 
-                        state.uri.path == '/role' || 
-                        state.uri.path == '/' ||
-                        state.uri.path.startsWith('/auth');
+    final isAuthPage = state.uri.path == '/login' || 
+                       state.uri.path == '/role' || 
+                       state.uri.path.startsWith('/auth');
+    
+    final isPublicPage = state.uri.path == '/' || state.uri.path == '/search_doctors';
 
     if (authState.isLoading) {
       return null; // Wait for auth check to finish
     }
 
     if (!authState.isAuthenticated) {
-      if (isLoggingIn) {
+      if (isAuthPage || isPublicPage) {
         return null; // Let them access public routes
       }
       return '/'; // Redirect to landing if not logged in and trying to access private route
     }
 
-    // If logged in, redirect away from login screens
-    if (isLoggingIn) {
+    // If logged in, redirect away from login/auth screens
+    if (isAuthPage) {
       switch (authState.role) {
         case AppConstants.rolePatient:
           return '/user';
