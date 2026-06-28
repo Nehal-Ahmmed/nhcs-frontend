@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
-import '../../../../core/providers/mock_provider.dart';
 import '../../data/models/doctor_dashboard_summary.dart';
 import '../../data/models/patient_queue_item.dart';
 import '../../data/models/report_review_item.dart';
@@ -8,12 +7,7 @@ import '../../data/repositories/doctor_repository.dart';
 
 // Repository Provider
 final doctorRepositoryProvider = Provider<DoctorRepository>((ref) {
-  // Respecting the isMockModeProvider
-  final isMock = ref.watch(isMockModeProvider);
-  if (isMock) {
-    return DoctorRepositoryImpl();
-  }
-  return DoctorRepositoryImpl(); // Fallback to mock for now
+  return DoctorRepositoryImpl();
 });
 
 // Navigation Provider

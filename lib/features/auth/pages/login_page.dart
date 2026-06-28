@@ -6,7 +6,6 @@ import 'package:dio/dio.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/dio_provider.dart';
-import '../../../core/providers/mock_provider.dart';
 import '../../../core/network/api_endpoints.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -22,26 +21,49 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  static const List<Map<String, String>> _demoUsers = [
+    // Super Admin (1)
+    {'username': 'nehal', 'role': 'Super Admin', 'icon': '👑', 'pass': '123456'},
+    // Patients (5)
+    {'username': 'patient_100', 'role': 'Patient', 'icon': '👤', 'pass': 'password123'},
+    {'username': 'patient_101', 'role': 'Patient', 'icon': '👤', 'pass': 'password123'},
+    {'username': 'patient_102', 'role': 'Patient', 'icon': '👤', 'pass': 'password123'},
+    {'username': 'patient_103', 'role': 'Patient', 'icon': '👤', 'pass': 'password123'},
+    {'username': 'patient_104', 'role': 'Patient', 'icon': '👤', 'pass': 'password123'},
+    // Doctors (5)
+    {'username': 'doctor_100', 'role': 'Doctor', 'icon': '🩺', 'pass': 'password123'},
+    {'username': 'doctor_101', 'role': 'Doctor', 'icon': '🩺', 'pass': 'password123'},
+    {'username': 'doctor_102', 'role': 'Doctor', 'icon': '🩺', 'pass': 'password123'},
+    {'username': 'doctor_103', 'role': 'Doctor', 'icon': '🩺', 'pass': 'password123'},
+    {'username': 'doctor_104', 'role': 'Doctor', 'icon': '🩺', 'pass': 'password123'},
+    // Hospitals (5)
+    {'username': 'hospital_100', 'role': 'Hospital', 'icon': '🏥', 'pass': 'password123'},
+    {'username': 'hospital_101', 'role': 'Hospital', 'icon': '🏥', 'pass': 'password123'},
+    {'username': 'hospital_102', 'role': 'Hospital', 'icon': '🏥', 'pass': 'password123'},
+    {'username': 'hospital_103', 'role': 'Hospital', 'icon': '🏥', 'pass': 'password123'},
+    {'username': 'hospital_104', 'role': 'Hospital', 'icon': '🏥', 'pass': 'password123'},
+  ];
+
   @override
   void initState() {
     super.initState();
     // Auto-fill dummy credentials for easy testing
     switch (widget.role) {
       case 'doctor':
-        _usernameController.text = 'doctor';
+        _usernameController.text = 'doctor_100';
         _passwordController.text = 'password123';
         break;
       case 'authority':
-        _usernameController.text = 'hospital';
+        _usernameController.text = 'hospital_100';
         _passwordController.text = 'password123';
         break;
       case 'govt':
-        _usernameController.text = 'govt';
+        _usernameController.text = 'nehal';
         _passwordController.text = 'password123';
         break;
       case 'patient':
       default:
-        _usernameController.text = 'patient';
+        _usernameController.text = 'patient_100';
         _passwordController.text = 'password123';
         break;
     }
@@ -76,103 +98,63 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     setState(() => _isLoading = true);
 
-    final isMock = ref.read(isMockModeProvider);
-
     try {
-      if (isMock) {
-        // Mock Authentication Simulation
-        await Future.delayed(const Duration(seconds: 1));
-        
-        if (_isSignUp) {
-          // Default mock registration
-          await ref.read(authProvider.notifier).login(
-            'mock_jwt_token',
-            'mock_refresh_token',
-            'PATIENT',
-            ['PATIENT'],
-          );
-        } else {
-          // Dynamic mock login roles based on username
-          String activeRole = 'PATIENT';
-          List<String> roles = ['PATIENT'];
+      // Real API Authentication
+      final dio = ref.read(dioProvider);
 
-          final lowerUser = username.toLowerCase();
-          if (lowerUser.contains('doctor')) {
-            activeRole = 'PATIENT';
-            roles = ['PATIENT', 'DOCTOR'];
-          } else if (lowerUser.contains('hospital') || lowerUser.contains('authority')) {
-            activeRole = 'PATIENT';
-            roles = ['PATIENT', 'HOSPITAL'];
-          } else if (lowerUser.contains('govt') || lowerUser.contains('admin')) {
-            activeRole = 'PATIENT';
-            roles = ['PATIENT', 'GOVT'];
-          }
+      if (_isSignUp) {
+        // Register request
+        final response = await dio.post(
+          ApiEndpoints.register,
+          data: {
+            'username': username,
+            'email': email,
+            'password': password,
+            'fullName': fullName,
+            'role': 'PATIENT',
+          },
+        );
 
-          await ref.read(authProvider.notifier).login(
-            'mock_jwt_token',
-            'mock_refresh_token',
-            activeRole,
-            roles,
-          );
-        }
+        final data = response.data;
+        final token = data['token'] as String;
+        final dynamicRoles = List<String>.from(data['roles'] as List);
+
+        await ref.read(authProvider.notifier).login(
+          token,
+          'refresh_token_not_provided',
+          'PATIENT',
+          dynamicRoles,
+        );
       } else {
-        // Real API Authentication
-        final dio = ref.read(dioProvider);
+        // Login request
+        final response = await dio.post(
+          ApiEndpoints.login,
+          data: {
+            'username': username,
+            'password': password,
+          },
+        );
 
-        if (_isSignUp) {
-          // Register request
-          final response = await dio.post(
-            ApiEndpoints.register,
-            data: {
-              'username': username,
-              'email': email,
-              'password': password,
-              'fullName': fullName,
-              'role': 'PATIENT',
-            },
-          );
-
-          final data = response.data;
-          final token = data['token'] as String;
-          final dynamicRoles = List<String>.from(data['roles'] as List);
-
-          await ref.read(authProvider.notifier).login(
-            token,
-            'refresh_token_not_provided',
-            'PATIENT',
-            dynamicRoles,
-          );
-        } else {
-          // Login request
-          final response = await dio.post(
-            ApiEndpoints.login,
-            data: {
-              'username': username,
-              'password': password,
-            },
-          );
-
-          final data = response.data;
-          final token = data['token'] as String;
-          final dynamicRoles = List<String>.from(data['roles'] as List);
-          
-          // Select default active role (e.g. PATIENT)
-          String defaultRole = 'PATIENT';
-          if (dynamicRoles.contains('GOVT')) {
-            defaultRole = 'GOVT';
-          } else if (dynamicRoles.contains('HOSPITAL')) {
-            defaultRole = 'HOSPITAL';
-          } else if (dynamicRoles.contains('DOCTOR')) {
-            defaultRole = 'DOCTOR';
-          }
-
-          await ref.read(authProvider.notifier).login(
-            token,
-            'refresh_token_not_provided',
-            defaultRole,
-            dynamicRoles,
-          );
+        final data = response.data;
+        final token = data['token'] as String;
+        final dynamicRoles = List<String>.from(data['roles'] as List);
+        
+        // Select default active role (e.g. PATIENT)
+        String defaultRole = 'PATIENT';
+        if (dynamicRoles.contains('GOVT')) {
+          defaultRole = 'GOVT';
+        } else if (dynamicRoles.contains('HOSPITAL')) {
+          defaultRole = 'HOSPITAL';
+        } else if (dynamicRoles.contains('DOCTOR')) {
+          defaultRole = 'DOCTOR';
         }
+
+        await ref.read(authProvider.notifier).login(
+          token,
+          'refresh_token_not_provided',
+          defaultRole,
+          dynamicRoles,
+        );
       }
 
       if (mounted) {
@@ -341,6 +323,94 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     labelText: 'Username',
                     labelStyle: GoogleFonts.inter(color: AppColors.textMuted),
                     prefixIcon: const Icon(Icons.person_outline_rounded, color: AppColors.textMuted, size: 20),
+                    suffixIcon: _isSignUp
+                        ? null
+                        : PopupMenuButton<Map<String, String>>(
+                            icon: const Icon(
+                              Icons.arrow_drop_down_rounded,
+                              color: AppColors.textMuted,
+                              size: 28,
+                            ),
+                            tooltip: 'Quick Login Select',
+                            color: AppColors.sidebarHover,
+                            surfaceTintColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                            ),
+                            constraints: const BoxConstraints(
+                              maxHeight: 400,
+                              maxWidth: 320,
+                            ),
+                            offset: const Offset(0, 48),
+                            onSelected: (user) {
+                              _usernameController.text = user['username']!;
+                              _passwordController.text = user['pass']!;
+                            },
+                            itemBuilder: (context) {
+                              return _demoUsers.map((user) {
+                                final isSuperAdmin = user['username'] == 'nehal';
+                                return PopupMenuItem<Map<String, String>>(
+                                  value: user,
+                                  child: Row(
+                                    children: [
+                                      Text(user['icon']!, style: const TextStyle(fontSize: 16)),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Text(
+                                          user['username']!,
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontWeight: isSuperAdmin ? FontWeight.bold : FontWeight.w500,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: isSuperAdmin
+                                              ? Colors.amber.withOpacity(0.2)
+                                              : user['role'] == 'Doctor'
+                                                  ? Colors.cyan.withOpacity(0.2)
+                                                  : user['role'] == 'Hospital'
+                                                      ? Colors.purple.withOpacity(0.2)
+                                                      : Colors.blue.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(
+                                            color: isSuperAdmin
+                                                ? Colors.amber.withOpacity(0.4)
+                                                : user['role'] == 'Doctor'
+                                                    ? Colors.cyan.withOpacity(0.4)
+                                                    : user['role'] == 'Hospital'
+                                                        ? Colors.purple.withOpacity(0.4)
+                                                        : Colors.blue.withOpacity(0.4),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          isSuperAdmin ? 'SUPER ADMIN 👑' : user['role']!.toUpperCase(),
+                                          style: GoogleFonts.inter(
+                                            color: isSuperAdmin
+                                                ? Colors.amber
+                                                : user['role'] == 'Doctor'
+                                                    ? Colors.cyanAccent
+                                                    : user['role'] == 'Hospital'
+                                                        ? Colors.purpleAccent
+                                                        : Colors.blueAccent,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 9,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList();
+                            },
+                          ),
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.05),
                     enabledBorder: OutlineInputBorder(
